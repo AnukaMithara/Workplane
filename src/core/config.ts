@@ -27,3 +27,36 @@ export function getWorkplanePaths(): WorkplanePaths {
   };
 }
 
+function parseCsvEnvList(value: string): string[] {
+  return value
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+export function getCommandDenylist(): string[] {
+  // Configure via env: comma-separated, e.g. "powershell,cmd,rm"
+  const env = process.env.WORKPLANE_COMMAND_DENYLIST;
+  if (env !== undefined) return parseCsvEnvList(env);
+
+  // Safe-by-default, but configurable.
+  // Note: denylist checks normalize by stripping common executable extensions.
+  return [
+    "sudo",
+    "rm",
+    "del",
+    "rmdir",
+    "diskpart",
+    "format",
+    "shutdown",
+    "reboot",
+    "powershell",
+    "pwsh",
+    "cmd",
+    "bash",
+    "sh",
+    "zsh",
+    "fish",
+  ];
+}
+

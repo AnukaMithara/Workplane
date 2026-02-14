@@ -3,58 +3,59 @@
 Date: 2026-02-14
 
 ## What Exists Today
-
 - `docs/requirements.md`
-  - Captures Phase 1 functional requirements (tools, safety constraints, persistence, evidence).
+  - Phase 1 functional requirements (tools, safety constraints, persistence, evidence).
 - `docs/architecture.md`
-  - Describes the Phase 1 implementation approach, safety guardrails, and filesystem layout.
+  - Implementation approach, safety guardrails, filesystem layout, and command execution safety rules.
 - `docs/tools.md`
-  - Lists Phase 1 tools and indicates which are implemented vs stubbed.
+  - Tool list, conventions, and request/response examples.
 - `docs/roadmap.md`
-  - Tracks Phase 1 milestone status.
+  - Milestone tracker.
+- `docs/README.md`
+  - Documentation index.
+- `docs/configuration.md`
+  - Environment variables and command policy configuration.
+- `docs/hosting.md`
+  - How to run Workplane from an MCP host.
+- `docs/workflows.md`
+  - Recommended multi-agent workflow and prompt templates.
 
-## What We Did (This Milestone)
+## What We Implemented (Phase 1)
+- MCP stdio server (`npm run dev`, `npm start`)
+- Workspace lifecycle via Git worktrees:
+  - `workspace.create|get|list|close`
+  - repo cache clone + worktree provisioning
+  - safe close with marker + root boundary checks
+- Concurrency:
+  - `workspace.lock|release` with TTL
+  - consistent mutation enforcement across `apply_patch`, `run`, and `close`
+- Code operations:
+  - `workspace.apply_patch` using `git apply` (optional `--check`) with patch artifact capture
+  - `workspace.diff` using `git diff` (optional artifact storage)
+  - `workspace.run` using `spawn` (no shell), denylist + timeouts + bounded output capture, stdout/stderr artifacts
+- Artifacts:
+  - `artifact.put|get|list` with on-disk storage and persisted metadata
+- Persistence:
+  - JSON store (`state.json`) with atomic writes
 
-- Read and followed `AGENTS.md` and `docs/requirements.md` to guide Milestones 1-2.
-- Implemented real `workspace.create|get|list|close` using Git worktrees and JSON persistence.
-- Implemented `workspace.lock|release` with TTL-based persistence and enforcement on `workspace.close` (and lock-checks on mutation stubs).
-- Implemented `artifact.put|get|list` with per-workspace on-disk storage + persisted metadata.
-- Implemented `workspace.apply_patch` using `git apply` (optional `--check`) and stored patch evidence as an artifact.
-- Refactored tool registration into smaller modules under `src/tools/*` (keeps the external tool surface stable).
-- Added Phase 1 docs required by `docs/requirements.md`.
+## Repo Scripts / Examples
+- `npm run smoke` covers:
+  - tool registration
+  - workspace lifecycle
+  - locks
+  - artifacts
+  - apply_patch
+  - diff
+  - run (success, denylist, timeout)
+- `examples/two-workspaces-demo/` demonstrates two independent workspaces from the same repo.
 
-## What The Repo Has Now (Code + Scripts)
+## What We Still Need To Do (Phase 1 Hardening)
+1. Command policy hardening for `workspace.run`:
+   - consider allowlists and per-tool policies
+   - better cross-platform process termination semantics
+2. More tests beyond smoke tests (unit tests for core modules)
+3. Optional notes tools:
+   - `workspace.note.add`, `workspace.note.list`
+4. Persistence upgrade (optional for v0.1):
+   - move from JSON (`state.json`) to SQLite
 
-- Stdio MCP server skeleton: `src/server.ts`
-- Phase 1 tool registration: `src/tools/index.ts`
-  - Implemented tools:
-    - `workspace.create|get|list|close`
-    - `workspace.lock|release`
-    - `workspace.apply_patch`
-    - `artifact.put|get|list`
-  - Stubbed tools (not implemented yet):
-    - `workspace.diff|run`
-    - `workspace.note.add|workspace.note.list` (optional)
-- Workspace core implementation:
-  - `src/core/workspaces.ts` (repo cache + worktree lifecycle)
-  - `src/core/store.ts` (JSON persistence)
-  - `src/core/pathSafety.ts` (root boundary checks)
-  - `src/core/locks.ts` (workspace lock persistence + checks)
-  - `src/core/artifacts.ts` (artifact storage + metadata)
-- Local dev scripts:
-  - `npm run dev` starts the stdio server
-  - `npm run build` compiles to `dist/`
-  - `npm run smoke` spawns the server and verifies tool registration + workspace lifecycle + locks + artifacts + apply_patch
-
-## Doc Gaps (Per Requirements)
-
-The Phase 1 requirements call for `docs/architecture.md`, `docs/tools.md`, and `docs/roadmap.md`. These now exist.
-
-## Recommended Next Doc Work
-
-1. Expand `docs/tools.md`:
-   - Add concrete request/response examples for all tools once implemented.
-2. Expand `docs/architecture.md`:
-   - Add command execution + evidence capture rules once `workspace.run` is implemented.
-3. Add the required runnable example:
-   - `examples/two-workspaces-demo/`

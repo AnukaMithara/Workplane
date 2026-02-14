@@ -153,16 +153,158 @@ Output:
 - `applied_at`
 - `patch_artifact_id`
 
-### `workspace.diff` (stub)
+Example request:
+```json
+{
+  "workspace_id": "ws_123",
+  "holder_id": "agent-1",
+  "check": true,
+  "patch": "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1,2 @@\n hello\n+hello from patch\n"
+}
+```
+
+Example response (success):
+```json
+{
+  "ok": true,
+  "timestamp": "2026-02-14T21:00:00.000Z",
+  "workspace_id": "ws_123",
+  "applied": true,
+  "applied_at": "2026-02-14T21:00:00.100Z",
+  "patch_artifact_id": "art_abc"
+}
+```
+
+Example response (check failed):
+```json
+{
+  "ok": false,
+  "timestamp": "2026-02-14T21:00:00.000Z",
+  "error": {
+    "code": "PATCH_CHECK_FAILED",
+    "message": "patch failed: README.md:1",
+    "details": {
+      "exit_code": 1
+    }
+  }
+}
+```
+
+### `workspace.diff` (implemented)
 
 Return `git diff` for the workspace (optionally store as an artifact).
 
-### `workspace.run` (stub)
+Inputs:
+- `workspace_id` (string)
+- `staged` (boolean) optional
+  - If true: runs `git diff --staged`
+- `pathspec` (string[]) optional
+  - Paths to filter (passed after `--`).
+- `store_as_artifact` (boolean) optional
+  - If true: stores the diff as an artifact (`type=diff`) and returns `artifact_id`.
+
+Output:
+- `workspace_id`
+- `diff` (string)
+- `artifact_id` (string) optional
+
+Example request:
+```json
+{
+  "workspace_id": "ws_123",
+  "pathspec": ["README.md"],
+  "store_as_artifact": true
+}
+```
+
+Example response:
+```json
+{
+  "ok": true,
+  "timestamp": "2026-02-14T21:00:00.000Z",
+  "workspace_id": "ws_123",
+  "diff": "diff --git a/README.md b/README.md\nindex 123..456 100644\n--- a/README.md\n+++ b/README.md\n@@ -1 +1,2 @@\n hello\n+hello from patch\n",
+  "artifact_id": "art_diff_1"
+}
+```
+
+### `workspace.run` (implemented)
 
 Run a command in the workspace and capture bounded stdout/stderr evidence.
 
 Lock enforcement:
 - Follows the locking convention above.
+
+Inputs:
+- `workspace_id` (string)
+- `command` (string)
+  - If `args` is not provided, Workplane will tokenize this string (no shell) and run it as an argv array.
+- `args` (string[]) optional
+  - If provided, Workplane will run `command` with these args (no shell).
+- `timeout_ms` (number) optional
+  - Default: 120000
+- `max_output_bytes` (number) optional
+  - Default: 262144 (256KB per stream)
+- `holder_id` (string) optional
+
+Behavior:
+- Enforces a denylist of dangerous executables.
+  - Configure via `WORKPLANE_COMMAND_DENYLIST` (comma-separated).
+- Captures bounded stdout/stderr (truncated) and stores each stream as a separate `log` artifact.
+
+Output:
+- `workspace_id`
+- `exit_code` (number | null)
+- `duration_ms`
+- `timed_out` (boolean)
+- `stdout` / `stderr` (strings, truncated)
+- `stdout_truncated` / `stderr_truncated` (booleans)
+- `stdout_artifact_id` / `stderr_artifact_id`
+- `started_at` / `ended_at`
+
+Example request:
+```json
+{
+  "workspace_id": "ws_123",
+  "holder_id": "agent-1",
+  "command": "git",
+  "args": ["status", "--porcelain"],
+  "timeout_ms": 20000,
+  "max_output_bytes": 65536
+}
+```
+
+Example response (success):
+```json
+{
+  "ok": true,
+  "timestamp": "2026-02-14T21:00:00.000Z",
+  "workspace_id": "ws_123",
+  "exit_code": 0,
+  "duration_ms": 42,
+  "timed_out": false,
+  "stdout": " M README.md\n",
+  "stderr": "",
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_artifact_id": "art_stdout_1",
+  "stderr_artifact_id": "art_stderr_1",
+  "started_at": "2026-02-14T21:00:00.010Z",
+  "ended_at": "2026-02-14T21:00:00.052Z"
+}
+```
+
+Example response (denylisted command):
+```json
+{
+  "ok": false,
+  "timestamp": "2026-02-14T21:00:00.000Z",
+  "error": {
+    "code": "DENIED",
+    "message": "Command is denied by policy."
+  }
+}
+```
 
 ## Artifacts
 

@@ -51,14 +51,14 @@ This approach keeps worktree creation fast and avoids mutating the original loca
 
 ## Safety Guardrails
 
-Workplane enforces “operate only inside Workplane root”:
+Workplane enforces "operate only inside Workplane root":
 - Any recorded or computed path is resolved to an absolute path and verified to be within `WORKPLANE_ROOT` (`src/core/pathSafety.ts`).
 
-Workplane enforces “only delete what we created” for `workspace.close`:
+Workplane enforces "only delete what we created" for `workspace.close`:
 - Each created worktree contains a marker file `.workplane-workspace.json`.
 - `workspace.close` refuses to remove a worktree if the marker is missing or does not match the `workspace_id`.
 
-Workplane enforces “single writer” via workspace locks:
+Workplane enforces "single writer" via workspace locks:
 - `workspace.lock` / `workspace.release` persist a lock record in `state.json` with an expiry (`locked_until`).
 - Mutation tools are `workspace.apply_patch`, `workspace.run`, and `workspace.close`.
 - Lock enforcement for all mutation tools:
@@ -76,6 +76,20 @@ All Git commands are executed via `spawn` with arguments (no shell interpolation
 
 Implementation: `src/core/exec.ts`, `src/core/git.ts`.
 
+## Command Execution Safety (workspace.run)
+
+`workspace.run` executes an argv array in the workspace worktree directory and captures evidence safely-by-default:
+
+- No shell: commands run via `spawn(..., { shell: false })`.
+- Working directory: `cwd` is the workspace `worktree_path` (validated to be within `WORKPLANE_ROOT`).
+- Lock enforcement: follows the global mutation lock rules (see Safety Guardrails above).
+- Denylist: dangerous executable names are blocked.
+  - Configure with `WORKPLANE_COMMAND_DENYLIST` (comma-separated).
+  - Defaults include common destructive commands and shell entrypoints (for example `rm`, `del`, `powershell`, `cmd`).
+- Timeout: bounded by `timeout_ms` (default 120000). On timeout, the process is killed and `timed_out=true` is returned.
+- Output bounds: stdout and stderr are each captured up to `max_output_bytes` (default 256KB per stream). Extra output is truncated and indicated via `stdout_truncated` / `stderr_truncated`.
+- Evidence capture: stdout and stderr are stored as separate `log` artifacts and returned as `stdout_artifact_id` / `stderr_artifact_id`.
+
 ## Persistence
 
 Phase 1 persistence uses a JSON state file:
@@ -91,10 +105,10 @@ Persisted entities (v0.1):
 
 SQLite is still preferred longer-term, but JSON persistence is acceptable for v0.1.
 
-## What’s Next
+## What's Next
 
 Remaining milestones will add:
-- `workspace.diff` using Git
-- `workspace.run` with denylist, bounded evidence capture, and artifact references
-- Harden `workspace.run` implementation (currently a stub)
-- Expand lock enforcement to all mutation tools (lock enforced for `workspace.close` and `workspace.apply_patch`; `workspace.run` is still stubbed but lock-checked)
+- A more robust command policy for `workspace.run` (allowlists, per-tool policies, safer defaults)
+- More tests beyond smoke tests (unit tests for core modules)
+- Optional notes tools (`workspace.note.add` / `workspace.note.list`)
+- SQLite persistence (replacing `state.json`)

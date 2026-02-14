@@ -1,4 +1,4 @@
-# Workplane — Requirements (Phase 1: Workspace Manager)
+# Workplane - Requirements (Phase 1: Workspace Manager)
 
 This document defines WHAT Workplane must do in Phase 1. Implementation details are intentionally flexible.
 
@@ -101,7 +101,7 @@ Workplane shall include:
 - docs/tools.md with tool schemas + example payloads
 - examples/two-workspaces-demo showing two workspaces from the same repo
 
-## 9. MVP “Definition of Done”
+## 9. MVP "Definition of Done"
 Phase 1 is done when:
 - MCP server starts and registers tools
 - Can create two workspaces from the same repo base ref without conflicts

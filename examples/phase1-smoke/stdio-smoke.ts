@@ -206,14 +206,13 @@ async function main() {
       "workspace.apply_patch check should fail on invalid patch"
     );
 
-  // apply_patch success: add a new file.
+  // apply_patch success: modify a tracked file so `git diff` can see it.
   const patchOk =
-    "diff --git a/NEWFILE.txt b/NEWFILE.txt\n" +
-    "new file mode 100644\n" +
-    "index 0000000..3b18e51\n" +
-    "--- /dev/null\n" +
-    "+++ b/NEWFILE.txt\n" +
-    "@@ -0,0 +1 @@\n" +
+    "diff --git a/README.md b/README.md\n" +
+    "--- a/README.md\n" +
+    "+++ b/README.md\n" +
+    "@@ -1 +1,2 @@\n" +
+    " hello\n" +
     "+hello from patch\n";
 
     const applyOk = await withTimeout(
@@ -255,9 +254,173 @@ async function main() {
       (patchArtifact as any)?.structuredContent?.artifact?.content ??
       JSON.parse((patchArtifact as any)?.content?.[0]?.text ?? "{}")?.artifact?.content;
     assert(
-      typeof patchContent === "string" && patchContent.includes("NEWFILE.txt"),
-      "Expected patch artifact content to include NEWFILE.txt"
+      typeof patchContent === "string" && patchContent.includes("README.md"),
+      "Expected patch artifact content to include README.md"
     );
+
+  // workspace.diff should include the new file content, and can be stored as an artifact.
+    const diffRes = await withTimeout(
+      "workspace.diff",
+      20_000,
+      client.callTool({
+        name: "workspace.diff",
+        arguments: {
+          workspace_id: wsId,
+          store_as_artifact: true,
+          pathspec: ["README.md"],
+        },
+      })
+    );
+    const diffOk =
+      (diffRes as any)?.structuredContent?.ok ??
+      JSON.parse((diffRes as any)?.content?.[0]?.text ?? "{}")?.ok;
+    assert(diffOk === true, "workspace.diff did not return ok=true");
+
+    const diffText =
+      (diffRes as any)?.structuredContent?.diff ??
+      JSON.parse((diffRes as any)?.content?.[0]?.text ?? "{}")?.diff;
+    assert(
+      typeof diffText === "string" && diffText.includes("hello from patch"),
+      "Expected workspace.diff to include patched content"
+    );
+
+    const diffArtifactId =
+      (diffRes as any)?.structuredContent?.artifact_id ??
+      JSON.parse((diffRes as any)?.content?.[0]?.text ?? "{}")?.artifact_id;
+    assert(
+      typeof diffArtifactId === "string" && diffArtifactId.length > 0,
+      "Expected workspace.diff to return artifact_id when store_as_artifact=true"
+    );
+
+    const diffArtifact = await withTimeout(
+      "artifact.get (diff)",
+      20_000,
+      client.callTool({
+        name: "artifact.get",
+        arguments: { workspace_id: wsId, artifact_id: diffArtifactId },
+      })
+    );
+    const diffArtifactContent =
+      (diffArtifact as any)?.structuredContent?.artifact?.content ??
+      JSON.parse((diffArtifact as any)?.content?.[0]?.text ?? "{}")?.artifact?.content;
+    assert(
+      typeof diffArtifactContent === "string" &&
+        diffArtifactContent.includes("hello from patch"),
+      "Expected diff artifact to include patched content"
+    );
+
+  // workspace.run success: run a harmless command and verify log artifacts exist.
+    const runRes = await withTimeout(
+      "workspace.run (git status)",
+      20_000,
+      client.callTool({
+        name: "workspace.run",
+        arguments: {
+          workspace_id: wsId,
+          holder_id: holderId,
+          command: "git",
+          args: ["status", "--porcelain"],
+          timeout_ms: 20_000,
+          max_output_bytes: 64 * 1024,
+        },
+      })
+    );
+    const runOk =
+      (runRes as any)?.structuredContent?.ok ??
+      JSON.parse((runRes as any)?.content?.[0]?.text ?? "{}")?.ok;
+    assert(runOk === true, "workspace.run did not return ok=true");
+
+    const stdoutArtId =
+      (runRes as any)?.structuredContent?.stdout_artifact_id ??
+      JSON.parse((runRes as any)?.content?.[0]?.text ?? "{}")?.stdout_artifact_id;
+    const stderrArtId =
+      (runRes as any)?.structuredContent?.stderr_artifact_id ??
+      JSON.parse((runRes as any)?.content?.[0]?.text ?? "{}")?.stderr_artifact_id;
+    assert(
+      typeof stdoutArtId === "string" && stdoutArtId.length > 0,
+      "Missing stdout_artifact_id"
+    );
+    assert(
+      typeof stderrArtId === "string" && stderrArtId.length > 0,
+      "Missing stderr_artifact_id"
+    );
+
+    const stdoutArt = await withTimeout(
+      "artifact.get (stdout)",
+      20_000,
+      client.callTool({
+        name: "artifact.get",
+        arguments: { workspace_id: wsId, artifact_id: stdoutArtId },
+      })
+    );
+    const stdoutContent =
+      (stdoutArt as any)?.structuredContent?.artifact?.content ??
+      JSON.parse((stdoutArt as any)?.content?.[0]?.text ?? "{}")?.artifact?.content;
+    assert(typeof stdoutContent === "string", "stdout artifact missing content");
+
+    const stderrArt = await withTimeout(
+      "artifact.get (stderr)",
+      20_000,
+      client.callTool({
+        name: "artifact.get",
+        arguments: { workspace_id: wsId, artifact_id: stderrArtId },
+      })
+    );
+    const stderrContent =
+      (stderrArt as any)?.structuredContent?.artifact?.content ??
+      JSON.parse((stderrArt as any)?.content?.[0]?.text ?? "{}")?.artifact?.content;
+    assert(typeof stderrContent === "string", "stderr artifact missing content");
+
+  // workspace.run denylist: powershell should be denied by default.
+    const denied = await withTimeout(
+      "workspace.run (denied)",
+      20_000,
+      client.callTool({
+        name: "workspace.run",
+        arguments: {
+          workspace_id: wsId,
+          holder_id: holderId,
+          command: "powershell",
+          args: ["-NoProfile", "-Command", "echo denied"],
+          timeout_ms: 5_000,
+        },
+      })
+    );
+    const deniedOk =
+      (denied as any)?.structuredContent?.ok ??
+      JSON.parse((denied as any)?.content?.[0]?.text ?? "{}")?.ok;
+    assert(deniedOk === false, "workspace.run should deny powershell");
+
+    const deniedCode =
+      (denied as any)?.structuredContent?.error?.code ??
+      JSON.parse((denied as any)?.content?.[0]?.text ?? "{}")?.error?.code;
+    assert(deniedCode === "DENIED", "Expected DENIED error code");
+
+  // workspace.run timeout: run a long node process and enforce a short timeout.
+    const timeoutRes = await withTimeout(
+      "workspace.run (timeout)",
+      20_000,
+      client.callTool({
+        name: "workspace.run",
+        arguments: {
+          workspace_id: wsId,
+          holder_id: holderId,
+          command: "node",
+          args: ["-e", "setTimeout(()=>{}, 5000)"],
+          timeout_ms: 200,
+          max_output_bytes: 16 * 1024,
+        },
+      })
+    );
+    const timeoutOk =
+      (timeoutRes as any)?.structuredContent?.ok ??
+      JSON.parse((timeoutRes as any)?.content?.[0]?.text ?? "{}")?.ok;
+    assert(timeoutOk === true, "workspace.run timeout should still return ok=true");
+
+    const timedOut =
+      (timeoutRes as any)?.structuredContent?.timed_out ??
+      JSON.parse((timeoutRes as any)?.content?.[0]?.text ?? "{}")?.timed_out;
+    assert(timedOut === true, "Expected timed_out=true");
 
   // Close should be denied without the correct holder_id when locked.
     const closeDenied = await withTimeout(

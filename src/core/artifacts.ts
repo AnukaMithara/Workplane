@@ -62,7 +62,9 @@ export async function artifactPut(input: ArtifactPutInput) {
   const artifact_id = newId("art");
   assertSafePathSegment(artifact_id, "artifact_id");
 
-  if (!input.content && !input.content_base64) {
+  const hasContent = input.content !== undefined;
+  const hasB64 = input.content_base64 !== undefined;
+  if (!hasContent && !hasB64) {
     return {
       ok: false as const,
       error: {
@@ -71,7 +73,7 @@ export async function artifactPut(input: ArtifactPutInput) {
       },
     };
   }
-  if (input.content && input.content_base64) {
+  if (hasContent && hasB64) {
     return {
       ok: false as const,
       error: {
@@ -225,4 +227,3 @@ export async function artifactList(input: { workspace_id: string; type?: string 
     })),
   };
 }
-

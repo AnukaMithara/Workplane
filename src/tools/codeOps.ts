@@ -2,6 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod/v4";
 import { checkWorkspaceMutationAllowed } from "../core/locks.js";
 import { workspaceApplyPatch } from "../core/patches.js";
+import { workspaceDiff } from "../core/diffs.js";
+import { workspaceRun } from "../core/runs.js";
 import { ResultBaseSchema, notImplemented, toolErr, toolOk } from "./common.js";
 
 export function registerCodeOpsTools(server: McpServer) {
@@ -55,6 +57,7 @@ export function registerCodeOpsTools(server: McpServer) {
         workspace_id: z.string().min(1),
         staged: z.boolean().optional(),
         pathspec: z.array(z.string()).optional(),
+        store_as_artifact: z.boolean().optional(),
       },
       outputSchema: ResultBaseSchema.extend({
         workspace_id: z.string().optional(),
@@ -62,7 +65,27 @@ export function registerCodeOpsTools(server: McpServer) {
         artifact_id: z.string().optional(),
       }),
     },
-    async () => notImplemented("workspace.diff")
+    async (args) => {
+      try {
+        const { workspace_id, staged, pathspec, store_as_artifact } = args as any;
+        const r = await workspaceDiff({
+          workspace_id,
+          staged,
+          pathspec,
+          store_as_artifact,
+        });
+        if (!r.ok) {
+          return toolErr(r.error.code, r.error.message, (r.error as any).details);
+        }
+        return toolOk({
+          workspace_id: r.workspace_id,
+          diff: r.diff,
+          artifact_id: (r as any).artifact_id,
+        });
+      } catch (err: any) {
+        return toolErr("DIFF_FAILED", err?.message ?? "workspace.diff failed");
+      }
+    }
   );
 
   server.registerTool(
@@ -84,23 +107,64 @@ export function registerCodeOpsTools(server: McpServer) {
         duration_ms: z.number().int().optional(),
         stdout: z.string().optional(),
         stderr: z.string().optional(),
-        log_artifact_id: z.string().optional(),
+        timed_out: z.boolean().optional(),
+        stdout_truncated: z.boolean().optional(),
+        stderr_truncated: z.boolean().optional(),
+        stdout_artifact_id: z.string().optional(),
+        stderr_artifact_id: z.string().optional(),
         started_at: z.string().optional(),
         ended_at: z.string().optional(),
       }),
     },
     async (args) => {
-      const { workspace_id, holder_id } = args as any;
-      const lockCheck = await checkWorkspaceMutationAllowed({ workspace_id, holder_id });
-      if (!lockCheck.ok) {
-        return toolErr(
-          lockCheck.error.code,
-          lockCheck.error.message,
-          (lockCheck.error as any).details
-        );
+      try {
+        const {
+          workspace_id,
+          command,
+          args: argv,
+          timeout_ms,
+          max_output_bytes,
+          holder_id,
+        } = args as any;
+
+        // Enforce lock rules consistently even if core logic changes.
+        const lockCheck = await checkWorkspaceMutationAllowed({ workspace_id, holder_id });
+        if (!lockCheck.ok) {
+          return toolErr(
+            lockCheck.error.code,
+            lockCheck.error.message,
+            (lockCheck.error as any).details
+          );
+        }
+
+        const r = await workspaceRun({
+          workspace_id,
+          command,
+          args: argv,
+          timeout_ms,
+          max_output_bytes,
+          holder_id,
+        });
+        if (!r.ok) {
+          return toolErr(r.error.code, r.error.message, (r.error as any).details);
+        }
+        return toolOk({
+          workspace_id: r.workspace_id,
+          exit_code: r.exit_code ?? undefined,
+          duration_ms: r.duration_ms,
+          stdout: r.stdout,
+          stderr: r.stderr,
+          timed_out: r.timed_out,
+          stdout_truncated: r.stdout_truncated,
+          stderr_truncated: r.stderr_truncated,
+          stdout_artifact_id: r.stdout_artifact_id,
+          stderr_artifact_id: r.stderr_artifact_id,
+          started_at: r.started_at,
+          ended_at: r.ended_at,
+        });
+      } catch (err: any) {
+        return toolErr("RUN_FAILED", err?.message ?? "workspace.run failed");
       }
-      return notImplemented("workspace.run");
     }
   );
 }
-
