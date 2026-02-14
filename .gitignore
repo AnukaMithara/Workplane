@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.DS_Store
+
+# Workplane runtime root (default)
+.workplane/
+
