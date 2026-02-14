@@ -124,7 +124,22 @@ export async function checkWorkspaceMutationAllowed(input: {
 }) {
   const store = await getStore();
   const existing = await readActiveLock(store, input.workspace_id);
-  if (!existing) return { ok: true as const };
+  // Lock policy for all mutating operations (apply_patch/run/close):
+  // - If holder_id is provided: require an active lock held by that holder.
+  // - If holder_id is omitted: allow mutation only when currently unlocked.
+  if (!existing) {
+    if (input.holder_id) {
+      return {
+        ok: false as const,
+        error: {
+          code: "NOT_LOCKED",
+          message: "Mutation requires an active lock held by holder_id.",
+          details: { workspace_id: input.workspace_id, holder_id: input.holder_id },
+        },
+      };
+    }
+    return { ok: true as const };
+  }
 
   if (!input.holder_id || existing.holder_id !== input.holder_id) {
     return {
@@ -143,4 +158,3 @@ export async function checkWorkspaceMutationAllowed(input: {
 
   return { ok: true as const };
 }
-

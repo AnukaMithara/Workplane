@@ -13,6 +13,11 @@ Common fields:
 - `timestamp`: ISO-8601 string
 - `ok`: boolean
 
+Locking convention (mutation tools):
+- Mutation tools are `workspace.apply_patch`, `workspace.run`, and `workspace.close`.
+- If `holder_id` is provided: the mutation requires an active lock held by that `holder_id` (otherwise `NOT_LOCKED` or `LOCKED`).
+- If `holder_id` is omitted: the mutation is allowed only if the workspace is currently unlocked (otherwise `LOCKED`).
+
 ## Workspace Lifecycle
 
 ### `workspace.create` (implemented)
@@ -83,7 +88,7 @@ Inputs:
 
 Safety:
 - Refuses to remove the directory unless it is under `WORKPLANE_ROOT` and contains a matching `.workplane-workspace.json` marker.
-- If the workspace is locked by another holder, returns `{ ok: false, error: { code: "LOCKED", ... } }`.
+- Lock enforcement follows the locking convention above.
 
 Output:
 - `workspace_id`
@@ -127,6 +132,9 @@ Output:
 
 Apply a unified diff/patch inside the workspace (will use `git apply`).
 
+Lock enforcement:
+- Follows the locking convention above.
+
 ### `workspace.diff` (stub)
 
 Return `git diff` for the workspace (optionally store as an artifact).
@@ -134,6 +142,9 @@ Return `git diff` for the workspace (optionally store as an artifact).
 ### `workspace.run` (stub)
 
 Run a command in the workspace and capture bounded stdout/stderr evidence.
+
+Lock enforcement:
+- Follows the locking convention above.
 
 ## Artifacts
 

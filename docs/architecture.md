@@ -60,7 +60,10 @@ Workplane enforces “only delete what we created” for `workspace.close`:
 
 Workplane enforces “single writer” via workspace locks:
 - `workspace.lock` / `workspace.release` persist a lock record in `state.json` with an expiry (`locked_until`).
-- `workspace.close` is denied if the workspace is locked by another holder.
+- Mutation tools are `workspace.apply_patch`, `workspace.run`, and `workspace.close`.
+- Lock enforcement for all mutation tools:
+  - If `holder_id` is provided: the mutation requires an active lock held by that `holder_id`.
+  - If `holder_id` is omitted: the mutation is allowed only when the workspace is currently unlocked.
 
 Workplane avoids corrupting MCP stdio:
 - The server never logs to stdout; logs go to stderr only (`src/server.ts`).
