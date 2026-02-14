@@ -1,6 +1,8 @@
 # Workplane
 
-Workplane is an **MCP (Model Context Protocol) stdio server** that provides a **Workspace Manager** for safe, reproducible multi-agent software delivery.
+Workplane is an **MCP (Model Context Protocol) stdio server** that provides a **Git worktree-based Workspace Manager** for safe, reproducible multi-agent software delivery.
+
+Keywords: MCP server, Model Context Protocol, Git worktrees, workspace isolation, patch application, command execution, evidence capture, artifact store, locking, multi-agent development.
 
 Phase 1 goals:
 - Isolated workspaces using **Git worktrees**
@@ -20,6 +22,16 @@ Phase 1 goals:
 - Artifact store: put/get/list per workspace
 - JSON persistence (`state.json`) with atomic writes (v0.1)
 
+## Use Cases
+- Orchestrate multi-agent coding with one isolated workspace per agent/task
+- Provide a safe control plane for applying patches and running tests with captured logs
+- Collect diffs/logs/notes as artifacts for review, auditing, or CI handoff
+
+## Safety Model (Phase 1)
+- All state lives under one root directory: `WORKPLANE_ROOT` (default `~/.workplane`)
+- Mutation tools (`workspace.apply_patch`, `workspace.run`, `workspace.close`) enforce locks
+- Command execution uses `spawn` with `shell:false`, denylist policy, timeouts, and bounded output capture
+
 ## Tool Status
 Implemented tools:
 - Workspace: `workspace.create`, `workspace.get`, `workspace.list`, `workspace.close`
@@ -29,6 +41,12 @@ Implemented tools:
 
 Optional (not implemented):
 - `workspace.note.add`, `workspace.note.list`
+
+## Quick Links
+- Docs index: [docs/README.md](docs/README.md)
+- Tool schemas + examples: [docs/tools.md](docs/tools.md)
+- Architecture + guardrails: [docs/architecture.md](docs/architecture.md)
+- Two workspaces demo: [examples/two-workspaces-demo/](examples/two-workspaces-demo/)
 
 ## Quickstart
 Prereqs:
