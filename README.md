@@ -47,6 +47,7 @@ Optional (not implemented):
 - Tool schemas + examples: [docs/tools.md](docs/tools.md)
 - Architecture + guardrails: [docs/architecture.md](docs/architecture.md)
 - Orchestrator initial system prompt: [docs/prompts/workplane-orchestrator-initial-system-prompt.md](docs/prompts/workplane-orchestrator-initial-system-prompt.md)
+- Sample project prompts: [docs/prompts/sample-project-prompts.md](docs/prompts/sample-project-prompts.md)
 - Two workspaces demo: [examples/two-workspaces-demo/](examples/two-workspaces-demo/)
 
 ## Quickstart
