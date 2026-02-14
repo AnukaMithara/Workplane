@@ -6,6 +6,12 @@ import {
   workspaceGet,
   workspaceList,
 } from "../core/workspaces.js";
+import {
+  checkWorkspaceMutationAllowed,
+  workspaceLock,
+  workspaceRelease,
+} from "../core/locks.js";
+import { artifactGet, artifactList, artifactPut } from "../core/artifacts.js";
 
 const ErrorSchema = z.object({
   code: z.string(),
@@ -230,8 +236,8 @@ export function registerPhase1Tools(server: McpServer) {
     },
     async (args) => {
       try {
-        const { workspace_id } = args as any;
-        const r = await workspaceClose({ workspace_id });
+        const { workspace_id, holder_id } = args as any;
+        const r = await workspaceClose({ workspace_id, holder_id });
         if (!r.ok) {
           const details =
             typeof r.error === "object" && r.error && "details" in r.error
@@ -265,7 +271,22 @@ export function registerPhase1Tools(server: McpServer) {
         locked_until: z.string().optional(),
       }),
     },
-    async () => notImplemented("workspace.lock")
+    async (args) => {
+      try {
+        const { workspace_id, holder_id, ttl_ms } = args as any;
+        const r = await workspaceLock({ workspace_id, holder_id, ttl_ms });
+        if (!r.ok) {
+          return toolErr(r.error.code, r.error.message, (r.error as any).details);
+        }
+        return toolOk({
+          workspace_id: r.workspace_id,
+          holder_id: r.holder_id,
+          locked_until: r.locked_until,
+        });
+      } catch (err: any) {
+        return toolErr("LOCK_FAILED", err?.message ?? "workspace.lock failed");
+      }
+    }
   );
 
   server.registerTool(
@@ -281,7 +302,21 @@ export function registerPhase1Tools(server: McpServer) {
         released_at: z.string().optional(),
       }),
     },
-    async () => notImplemented("workspace.release")
+    async (args) => {
+      try {
+        const { workspace_id, holder_id } = args as any;
+        const r = await workspaceRelease({ workspace_id, holder_id });
+        if (!r.ok) {
+          return toolErr(r.error.code, r.error.message, (r.error as any).details);
+        }
+        return toolOk({ workspace_id: r.workspace_id, released_at: r.released_at });
+      } catch (err: any) {
+        return toolErr(
+          "RELEASE_FAILED",
+          err?.message ?? "workspace.release failed"
+        );
+      }
+    }
   );
 
   // Code operations
@@ -300,7 +335,14 @@ export function registerPhase1Tools(server: McpServer) {
         applied_at: z.string().optional(),
       }),
     },
-    async () => notImplemented("workspace.apply_patch")
+    async (args) => {
+      const { workspace_id, holder_id } = args as any;
+      const lockCheck = await checkWorkspaceMutationAllowed({ workspace_id, holder_id });
+      if (!lockCheck.ok) {
+        return toolErr(lockCheck.error.code, lockCheck.error.message, (lockCheck.error as any).details);
+      }
+      return notImplemented("workspace.apply_patch");
+    }
   );
 
   server.registerTool(
@@ -345,7 +387,14 @@ export function registerPhase1Tools(server: McpServer) {
         ended_at: z.string().optional(),
       }),
     },
-    async () => notImplemented("workspace.run")
+    async (args) => {
+      const { workspace_id, holder_id } = args as any;
+      const lockCheck = await checkWorkspaceMutationAllowed({ workspace_id, holder_id });
+      if (!lockCheck.ok) {
+        return toolErr(lockCheck.error.code, lockCheck.error.message, (lockCheck.error as any).details);
+      }
+      return notImplemented("workspace.run");
+    }
   );
 
   // Artifacts
@@ -373,7 +422,21 @@ export function registerPhase1Tools(server: McpServer) {
         stored_at: z.string().optional(),
       }),
     },
-    async () => notImplemented("artifact.put")
+    async (args) => {
+      try {
+        const r = await artifactPut(args as any);
+        if (!r.ok) {
+          return toolErr(r.error.code, r.error.message, (r.error as any).details);
+        }
+        return toolOk({
+          workspace_id: r.workspace_id,
+          artifact_id: r.artifact_id,
+          stored_at: r.stored_at,
+        });
+      } catch (err: any) {
+        return toolErr("PUT_FAILED", err?.message ?? "artifact.put failed");
+      }
+    }
   );
 
   server.registerTool(
@@ -398,7 +461,18 @@ export function registerPhase1Tools(server: McpServer) {
           .optional(),
       }),
     },
-    async () => notImplemented("artifact.get")
+    async (args) => {
+      try {
+        const { workspace_id, artifact_id } = args as any;
+        const r = await artifactGet({ workspace_id, artifact_id });
+        if (!r.ok) {
+          return toolErr(r.error.code, r.error.message, (r.error as any).details);
+        }
+        return toolOk({ artifact: r.artifact });
+      } catch (err: any) {
+        return toolErr("GET_FAILED", err?.message ?? "artifact.get failed");
+      }
+    }
   );
 
   server.registerTool(
@@ -422,7 +496,18 @@ export function registerPhase1Tools(server: McpServer) {
           .optional(),
       }),
     },
-    async () => notImplemented("artifact.list")
+    async (args) => {
+      try {
+        const { workspace_id, type } = args as any;
+        const r = await artifactList({ workspace_id, type });
+        if (!r.ok) {
+          return toolErr(r.error.code, r.error.message, (r.error as any).details);
+        }
+        return toolOk({ artifacts: r.artifacts });
+      } catch (err: any) {
+        return toolErr("LIST_FAILED", err?.message ?? "artifact.list failed");
+      }
+    }
   );
 
   // Nice-to-have notes (stubbed)

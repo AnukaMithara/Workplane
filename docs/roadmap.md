@@ -24,17 +24,18 @@ This roadmap tracks Phase 1 milestones from `AGENTS.md`.
 - `workspace.apply_patch` (use `git apply`)
 - `workspace.diff` (use `git diff`)
 
-## Milestone 4 — Run + Artifacts (Not started)
-- `workspace.run` with:
+## Milestone 4 — Run + Artifacts (In progress)
+- `artifact.put/get/list` (Done)
+- `workspace.run` (Not started)
   - timeouts
   - bounded output capture + truncation
   - command denylist/allowlist
   - evidence artifacts for stdout/stderr
-- `artifact.put/get/list`
 
-## Milestone 5 — Locks + Safety Hardening (Not started)
+## Milestone 5 — Locks + Safety Hardening (In progress)
 - `workspace.lock/release` with TTL and holder enforcement
-- Enforce lock in `apply_patch/run/close`
+- Enforce lock in `close` (Done)
+- Enforce lock in `apply_patch/run` (Pending; currently lock-checked but tools are stubs)
 - Additional safety checks for command execution and filesystem operations
 
 ## Required Example (Not started)
@@ -43,4 +44,3 @@ This roadmap tracks Phase 1 milestones from `AGENTS.md`.
   - applying patches independently
   - running commands
   - retrieving diffs/logs
-

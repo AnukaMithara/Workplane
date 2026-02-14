@@ -2,9 +2,15 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { getWorkplanePaths } from "./config.js";
 import { sha256Hex, newId } from "./ids.js";
-import { ensureDir, assertPathWithinRoot, safeResolveChild } from "./pathSafety.js";
+import {
+  ensureDir,
+  assertPathWithinRoot,
+  safeResolveChild,
+  assertSafePathSegment,
+} from "./pathSafety.js";
 import { ensureGitAvailable, gitInRepo, git } from "./git.js";
 import { WorkplaneStore, type WorkspaceRecord } from "./store.js";
+import { checkWorkspaceMutationAllowed, workspaceRelease } from "./locks.js";
 
 const WORKSPACE_MARKER = ".workplane-workspace.json";
 
@@ -19,6 +25,7 @@ export type WorkspaceCreateInput = {
 
 export type WorkspaceCloseInput = {
   workspace_id: string;
+  holder_id?: string;
 };
 
 function nowIso() {
@@ -202,6 +209,8 @@ export async function workspaceClose(input: WorkspaceCloseInput) {
   const paths = getWorkplanePaths();
   const store = new WorkplaneStore(paths.root, paths.stateFile);
 
+  assertSafePathSegment(input.workspace_id, "workspace_id");
+
   const rec = await store.getWorkspace(input.workspace_id);
   if (!rec) {
     return {
@@ -209,6 +218,12 @@ export async function workspaceClose(input: WorkspaceCloseInput) {
       error: { code: "NOT_FOUND", message: "Unknown workspace_id." },
     };
   }
+
+  const lockCheck = await checkWorkspaceMutationAllowed({
+    workspace_id: rec.workspace_id,
+    holder_id: input.holder_id,
+  });
+  if (!lockCheck.ok) return lockCheck;
 
   // Hard safety checks: never operate outside Workplane root.
   assertPathWithinRoot(paths.root, rec.worktree_path, "Recorded worktree path");
@@ -253,6 +268,13 @@ export async function workspaceClose(input: WorkspaceCloseInput) {
   };
   await store.upsertWorkspace(updated);
 
+  // After close, clear lock held by this holder if provided (avoid dangling locks).
+  if (input.holder_id) {
+    await workspaceRelease({
+      workspace_id: rec.workspace_id,
+      holder_id: input.holder_id,
+    }).catch(() => {});
+  }
+
   return { ok: true as const, workspace: updated };
 }
-

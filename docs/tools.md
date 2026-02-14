@@ -79,10 +79,11 @@ Close a workspace (remove its worktree) and mark it closed.
 
 Inputs:
 - `workspace_id`
-- `holder_id` (string) optional (reserved for future lock enforcement)
+- `holder_id` (string) optional
 
 Safety:
 - Refuses to remove the directory unless it is under `WORKPLANE_ROOT` and contains a matching `.workplane-workspace.json` marker.
+- If the workspace is locked by another holder, returns `{ ok: false, error: { code: "LOCKED", ... } }`.
 
 Output:
 - `workspace_id`
@@ -90,13 +91,35 @@ Output:
 
 ## Concurrency
 
-### `workspace.lock` (stub)
+### `workspace.lock` (implemented)
 
 Acquire a mutation lock for a workspace.
 
-### `workspace.release` (stub)
+Inputs:
+- `workspace_id` (string)
+- `holder_id` (string)
+- `ttl_ms` (number) optional
+
+Output:
+- `workspace_id`
+- `holder_id`
+- `locked_until`
+
+Notes:
+- If already locked by a different holder, returns `{ ok: false, error: { code: "LOCKED", ... } }`.
+- Re-locking with the same holder renews the lock and updates `locked_until`.
+
+### `workspace.release` (implemented)
 
 Release a mutation lock for a workspace.
+
+Inputs:
+- `workspace_id` (string)
+- `holder_id` (string)
+
+Output:
+- `workspace_id`
+- `released_at`
 
 ## Code Operations
 
@@ -114,15 +137,42 @@ Run a command in the workspace and capture bounded stdout/stderr evidence.
 
 ## Artifacts
 
-### `artifact.put` (stub)
+### `artifact.put` (implemented)
 
 Store an artifact for a workspace.
 
-### `artifact.get` (stub)
+Inputs:
+- `workspace_id` (string)
+- `type` (`diff` | `log` | `file` | `note` | `report`)
+- `name` (string) optional
+- `content` (string) optional (utf-8)
+- `content_base64` (string) optional
+- `content_type` (string) optional
+- `metadata` (object) optional
+
+Rules:
+- Exactly one of `content` or `content_base64` is required.
+
+Output:
+- `workspace_id`
+- `artifact_id`
+- `stored_at`
+
+### `artifact.get` (implemented)
 
 Fetch an artifact by id.
 
-### `artifact.list` (stub)
+Output:
+- `artifact` object with:
+  - `artifact_id`
+  - `type`
+  - `name` (optional)
+  - `content` (optional, when stored as utf-8)
+  - `content_base64` (optional, when stored as bytes)
+  - `content_type` (optional)
+  - `created_at`
+
+### `artifact.list` (implemented)
 
 List artifacts for a workspace.
 
@@ -130,4 +180,3 @@ List artifacts for a workspace.
 
 ### `workspace.note.add` (stub)
 ### `workspace.note.list` (stub)
-

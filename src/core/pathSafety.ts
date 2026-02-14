@@ -7,6 +7,20 @@ function normalizeForPrefix(p: string) {
   return p.endsWith(path.sep) ? p : p + path.sep;
 }
 
+export function assertSafePathSegment(segment: string, label: string) {
+  // For IDs used in folder names. Keep it conservative and cross-platform.
+  // Allows: letters, numbers, underscore, dash, dot.
+  if (!segment || typeof segment !== "string") {
+    throw new Error(`${label} is required.`);
+  }
+  if (segment.includes("/") || segment.includes("\\") || segment.includes("..")) {
+    throw new Error(`${label} contains an invalid path sequence.`);
+  }
+  if (!/^[A-Za-z0-9._-]+$/.test(segment)) {
+    throw new Error(`${label} contains invalid characters.`);
+  }
+}
+
 export function isPathWithinRoot(rootAbs: string, candidateAbs: string): boolean {
   const root = normalizeForPrefix(path.resolve(rootAbs));
   const cand = path.resolve(candidateAbs);
@@ -36,4 +50,3 @@ export function safeResolveChild(rootAbs: string, ...parts: string[]) {
   assertPathWithinRoot(rootAbs, resolved, "Resolved path");
   return resolved;
 }
-

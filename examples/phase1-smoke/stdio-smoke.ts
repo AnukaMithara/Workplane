@@ -118,6 +118,60 @@ async function main() {
   });
   assert(typeof r3 === "object" && r3 !== null, "workspace.get returned non-object");
 
+  // Lock + artifact basic checks.
+  const holderId = "smoke-holder";
+  const lock = await client.callTool({
+    name: "workspace.lock",
+    arguments: { workspace_id: wsId, holder_id: holderId, ttl_ms: 60_000 },
+  });
+  const lockOk =
+    (lock as any)?.structuredContent?.ok ??
+    JSON.parse((lock as any)?.content?.[0]?.text ?? "{}")?.ok;
+  assert(lockOk === true, "workspace.lock did not return ok=true");
+
+  // Close should be denied without the correct holder_id when locked.
+  const closeDenied = await client.callTool({
+    name: "workspace.close",
+    arguments: { workspace_id: wsId },
+  });
+  const closeDeniedOk =
+    (closeDenied as any)?.structuredContent?.ok ??
+    JSON.parse((closeDenied as any)?.content?.[0]?.text ?? "{}")?.ok;
+  assert(closeDeniedOk === false, "workspace.close should be denied while locked");
+
+  const put = await client.callTool({
+    name: "artifact.put",
+    arguments: {
+      workspace_id: wsId,
+      type: "log",
+      name: "smoke-log",
+      content: "hello artifact\n",
+      content_type: "text/plain",
+    },
+  });
+  const artId =
+    (put as any)?.structuredContent?.artifact_id ??
+    JSON.parse((put as any)?.content?.[0]?.text ?? "{}")?.artifact_id;
+  assert(typeof artId === "string" && artId.length > 0, "Missing artifact_id");
+
+  const list = await client.callTool({
+    name: "artifact.list",
+    arguments: { workspace_id: wsId, type: "log" },
+  });
+  const artifacts =
+    (list as any)?.structuredContent?.artifacts ??
+    JSON.parse((list as any)?.content?.[0]?.text ?? "{}")?.artifacts;
+  assert(Array.isArray(artifacts) && artifacts.length >= 1, "artifact.list empty");
+
+  const get = await client.callTool({
+    name: "artifact.get",
+    arguments: { workspace_id: wsId, artifact_id: artId },
+  });
+  const content =
+    (get as any)?.structuredContent?.artifact?.content ??
+    JSON.parse((get as any)?.content?.[0]?.text ?? "{}")?.artifact?.content;
+  assert(content === "hello artifact\n", "artifact.get content mismatch");
+
   const r4 = await client.callTool({
     name: "workspace.list",
     arguments: { status: "open" },
@@ -129,7 +183,7 @@ async function main() {
 
   const r5 = await client.callTool({
     name: "workspace.close",
-    arguments: { workspace_id: wsId },
+    arguments: { workspace_id: wsId, holder_id: holderId },
   });
   assert(
     typeof r5 === "object" && r5 !== null,
@@ -140,7 +194,9 @@ async function main() {
 
   fs.rmSync(tmpRoot, { recursive: true, force: true });
 
-  console.log("Phase 1 smoke test passed (tool registration + worktree lifecycle).");
+  console.log(
+    "Phase 1 smoke test passed (tool registration + workspace lifecycle + locks + artifacts)."
+  );
 }
 
 main().catch((err) => {

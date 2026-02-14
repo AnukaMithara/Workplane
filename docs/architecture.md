@@ -23,7 +23,7 @@ Under the root:
 - `workspaces/`
   - One directory per `workspace_id` (a Git worktree)
 - `artifacts/`
-  - Reserved for later milestones
+  - Per-workspace artifact files and metadata references
 - `state.json`
   - JSON metadata store (v0.1 persistence)
 
@@ -58,6 +58,10 @@ Workplane enforces “only delete what we created” for `workspace.close`:
 - Each created worktree contains a marker file `.workplane-workspace.json`.
 - `workspace.close` refuses to remove a worktree if the marker is missing or does not match the `workspace_id`.
 
+Workplane enforces “single writer” via workspace locks:
+- `workspace.lock` / `workspace.release` persist a lock record in `state.json` with an expiry (`locked_until`).
+- `workspace.close` is denied if the workspace is locked by another holder.
+
 Workplane avoids corrupting MCP stdio:
 - The server never logs to stdout; logs go to stderr only (`src/server.ts`).
 
@@ -77,6 +81,11 @@ Phase 1 persistence uses a JSON state file:
 
 Implementation: `src/core/store.ts`.
 
+Persisted entities (v0.1):
+- Workspaces
+- Locks
+- Artifacts (metadata; content stored under `artifacts/<workspace_id>/`)
+
 SQLite is still preferred longer-term, but JSON persistence is acceptable for v0.1.
 
 ## What’s Next
@@ -84,6 +93,5 @@ SQLite is still preferred longer-term, but JSON persistence is acceptable for v0
 Remaining milestones will add:
 - `workspace.apply_patch` / `workspace.diff` using Git
 - `workspace.run` with denylist, bounded evidence capture, and artifact references
-- `artifact.put/get/list`
-- `workspace.lock/release` and enforcement across mutation tools
-
+- Harden `workspace.apply_patch` / `workspace.run` implementations (currently stubs)
+- Expand lock enforcement to all mutation tools (currently enforced for `workspace.close`, and lock-checked for `workspace.apply_patch`/`workspace.run`)
