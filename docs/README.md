@@ -12,6 +12,7 @@ Start here for developer-facing docs.
 ## How-To
 - [configuration.md](configuration.md) (env vars, command policy)
 - [workflows.md](workflows.md) (recommended multi-agent workflow + prompt templates)
+- [prompts/workplane-orchestrator-initial-system-prompt.md](prompts/workplane-orchestrator-initial-system-prompt.md) (copy/paste prompt for orchestrator hosts)
 - [hosting.md](hosting.md) (how to run Workplane from an MCP host configuration)
 
 ## Project

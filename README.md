@@ -46,6 +46,7 @@ Optional (not implemented):
 - Docs index: [docs/README.md](docs/README.md)
 - Tool schemas + examples: [docs/tools.md](docs/tools.md)
 - Architecture + guardrails: [docs/architecture.md](docs/architecture.md)
+- Orchestrator initial system prompt: [docs/prompts/workplane-orchestrator-initial-system-prompt.md](docs/prompts/workplane-orchestrator-initial-system-prompt.md)
 - Two workspaces demo: [examples/two-workspaces-demo/](examples/two-workspaces-demo/)
 
 ## Quickstart
