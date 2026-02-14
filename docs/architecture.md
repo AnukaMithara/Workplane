@@ -94,7 +94,7 @@ SQLite is still preferred longer-term, but JSON persistence is acceptable for v0
 ## What’s Next
 
 Remaining milestones will add:
-- `workspace.apply_patch` / `workspace.diff` using Git
+- `workspace.diff` using Git
 - `workspace.run` with denylist, bounded evidence capture, and artifact references
-- Harden `workspace.apply_patch` / `workspace.run` implementations (currently stubs)
-- Expand lock enforcement to all mutation tools (currently enforced for `workspace.close`, and lock-checked for `workspace.apply_patch`/`workspace.run`)
+- Harden `workspace.run` implementation (currently a stub)
+- Expand lock enforcement to all mutation tools (lock enforced for `workspace.close` and `workspace.apply_patch`; `workspace.run` is still stubbed but lock-checked)

@@ -14,6 +14,7 @@ export type ExecOptions = {
   timeoutMs?: number;
   maxOutputBytes?: number;
   env?: NodeJS.ProcessEnv;
+  stdinUtf8?: string;
 };
 
 function truncateUtf8(input: Buffer, maxBytes: number) {
@@ -42,6 +43,11 @@ export async function execFileCaptured(
     let stdoutBytes = 0;
     let stderrBytes = 0;
     let killed = false;
+
+    if (typeof opts.stdinUtf8 === "string") {
+      child.stdin?.write(opts.stdinUtf8, "utf8");
+      child.stdin?.end();
+    }
 
     const timer = setTimeout(() => {
       killed = true;
@@ -76,4 +82,3 @@ export async function execFileCaptured(
     });
   });
 }
-

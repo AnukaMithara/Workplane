@@ -28,7 +28,23 @@ export async function git(args: string[], cwd?: string) {
   });
 }
 
+export async function gitWithStdin(args: string[], stdinUtf8: string, cwd?: string) {
+  return await execFileCaptured("git", args, {
+    cwd,
+    timeoutMs: 240_000,
+    maxOutputBytes: 512 * 1024,
+    stdinUtf8,
+  });
+}
+
 export async function gitInRepo(repoDir: string, args: string[]) {
   return await git(["-C", path.resolve(repoDir), ...args]);
 }
 
+export async function gitInRepoWithStdin(
+  repoDir: string,
+  args: string[],
+  stdinUtf8: string
+) {
+  return await gitWithStdin(["-C", path.resolve(repoDir), ...args], stdinUtf8);
+}

@@ -20,9 +20,9 @@ This roadmap tracks Phase 1 milestones from `AGENTS.md`.
 - Safe close via marker + root path checks and `git worktree remove`
 - Smoke test exercises create/get/list/close using a temp `WORKPLANE_ROOT`
 
-## Milestone 3 — Patch + Diff (Not started)
-- `workspace.apply_patch` (use `git apply`)
-- `workspace.diff` (use `git diff`)
+## Milestone 3 — Patch + Diff (In progress)
+- `workspace.apply_patch` (Done; uses `git apply` with optional `--check`, stores patch as an artifact)
+- `workspace.diff` (Not started; will use `git diff`)
 
 ## Milestone 4 — Run + Artifacts (In progress)
 - `artifact.put/get/list` (Done)
@@ -35,7 +35,8 @@ This roadmap tracks Phase 1 milestones from `AGENTS.md`.
 ## Milestone 5 — Locks + Safety Hardening (In progress)
 - `workspace.lock/release` with TTL and holder enforcement
 - Enforce lock in `close` (Done)
-- Enforce lock in `apply_patch/run` (Pending; currently lock-checked but tools are stubs)
+- Enforce lock in `apply_patch` (Done)
+- Enforce lock in `workspace.run` (Partial; tool checks lock but command execution is still stubbed)
 - Additional safety checks for command execution and filesystem operations
 
 ## Required Example (Not started)

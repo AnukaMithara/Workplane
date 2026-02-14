@@ -19,6 +19,8 @@ Date: 2026-02-14
 - Implemented real `workspace.create|get|list|close` using Git worktrees and JSON persistence.
 - Implemented `workspace.lock|release` with TTL-based persistence and enforcement on `workspace.close` (and lock-checks on mutation stubs).
 - Implemented `artifact.put|get|list` with per-workspace on-disk storage + persisted metadata.
+- Implemented `workspace.apply_patch` using `git apply` (optional `--check`) and stored patch evidence as an artifact.
+- Refactored tool registration into smaller modules under `src/tools/*` (keeps the external tool surface stable).
 - Added Phase 1 docs required by `docs/requirements.md`.
 
 ## What The Repo Has Now (Code + Scripts)
@@ -28,9 +30,10 @@ Date: 2026-02-14
   - Implemented tools:
     - `workspace.create|get|list|close`
     - `workspace.lock|release`
+    - `workspace.apply_patch`
     - `artifact.put|get|list`
   - Stubbed tools (not implemented yet):
-    - `workspace.apply_patch|diff|run`
+    - `workspace.diff|run`
     - `workspace.note.add|workspace.note.list` (optional)
 - Workspace core implementation:
   - `src/core/workspaces.ts` (repo cache + worktree lifecycle)
@@ -41,7 +44,7 @@ Date: 2026-02-14
 - Local dev scripts:
   - `npm run dev` starts the stdio server
   - `npm run build` compiles to `dist/`
-  - `npm run smoke` spawns the server and verifies tool registration + workspace lifecycle + locks + artifacts
+  - `npm run smoke` spawns the server and verifies tool registration + workspace lifecycle + locks + artifacts + apply_patch
 
 ## Doc Gaps (Per Requirements)
 

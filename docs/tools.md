@@ -128,12 +128,30 @@ Output:
 
 ## Code Operations
 
-### `workspace.apply_patch` (stub)
+### `workspace.apply_patch` (implemented)
 
 Apply a unified diff/patch inside the workspace (will use `git apply`).
 
 Lock enforcement:
 - Follows the locking convention above.
+
+Inputs:
+- `workspace_id` (string)
+- `patch` (string) unified diff content
+- `holder_id` (string) optional
+- `check` (boolean) optional
+  - If true: runs `git apply --check` first and returns `PATCH_CHECK_FAILED` on failure.
+
+Behavior:
+- Validates the workspace exists and is `open`.
+- Stores the patch text as an artifact (`type=diff`, name `applied.patch`) and returns `patch_artifact_id`.
+- Applies the patch via `git apply -` within the workspace worktree directory (no shell).
+
+Output:
+- `workspace_id`
+- `applied` (boolean)
+- `applied_at`
+- `patch_artifact_id`
 
 ### `workspace.diff` (stub)
 

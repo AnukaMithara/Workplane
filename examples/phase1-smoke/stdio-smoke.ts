@@ -9,6 +9,20 @@ function assert(condition: unknown, msg: string): asserts condition {
   if (!condition) throw new Error(msg);
 }
 
+async function withTimeout<T>(label: string, ms: number, p: Promise<T>): Promise<T> {
+  let t: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      p,
+      new Promise<T>((_, reject) => {
+        t = setTimeout(() => reject(new Error(`Timeout (${ms}ms): ${label}`)), ms);
+      }),
+    ]);
+  } finally {
+    if (t) clearTimeout(t);
+  }
+}
+
 function git(cwd: string, args: string[]) {
   execFileSync("git", ["-C", cwd, ...args], {
     stdio: "ignore",
@@ -57,142 +71,285 @@ async function main() {
     process.stderr.write(chunk);
   });
 
-  await client.connect(transport);
+  try {
+    await withTimeout("client.connect", 20_000, client.connect(transport));
 
-  const tools = await client.listTools();
-  const toolNames = new Set(tools.tools.map((t) => t.name));
+    const tools = await withTimeout("client.listTools", 20_000, client.listTools());
+    const toolNames = new Set(tools.tools.map((t) => t.name));
 
-  const expected = [
-    "workspace.create",
-    "workspace.get",
-    "workspace.list",
-    "workspace.close",
-    "workspace.lock",
-    "workspace.release",
-    "workspace.apply_patch",
-    "workspace.diff",
-    "workspace.run",
-    "artifact.put",
-    "artifact.get",
-    "artifact.list",
-  ];
+    const expected = [
+      "workspace.create",
+      "workspace.get",
+      "workspace.list",
+      "workspace.close",
+      "workspace.lock",
+      "workspace.release",
+      "workspace.apply_patch",
+      "workspace.diff",
+      "workspace.run",
+      "artifact.put",
+      "artifact.get",
+      "artifact.list",
+    ];
 
-  for (const name of expected) {
-    assert(toolNames.has(name), `Missing expected tool: ${name}`);
-  }
+    for (const name of expected) {
+      assert(toolNames.has(name), `Missing expected tool: ${name}`);
+    }
 
   // Optional tools are allowed to exist; we just verify registration if present.
-  const optional = ["workspace.note.add", "workspace.note.list"];
-  for (const name of optional) {
-    if (!toolNames.has(name)) {
-      console.warn(`Optional tool not registered: ${name}`);
+    const optional = ["workspace.note.add", "workspace.note.list"];
+    for (const name of optional) {
+      if (!toolNames.has(name)) {
+        console.warn(`Optional tool not registered: ${name}`);
+      }
     }
-  }
 
-  const r1 = await client.callTool({
-    name: "workspace.list",
-    arguments: {},
-  });
-  assert(
-    typeof r1 === "object" && r1 !== null,
-    "workspace.list returned non-object"
-  );
+    const r1 = await withTimeout(
+      "workspace.list",
+      20_000,
+      client.callTool({
+        name: "workspace.list",
+        arguments: {},
+      })
+    );
+    assert(
+      typeof r1 === "object" && r1 !== null,
+      "workspace.list returned non-object"
+    );
 
-  const r2 = await client.callTool({
-    name: "workspace.create",
-    arguments: { repo_path: tmpRepo, base_ref: "HEAD" },
-  });
-  assert(
-    typeof r2 === "object" && r2 !== null,
-    "workspace.create returned non-object"
-  );
+    const r2 = await withTimeout(
+      "workspace.create",
+      60_000,
+      client.callTool({
+        name: "workspace.create",
+        arguments: { repo_path: tmpRepo, base_ref: "HEAD" },
+      })
+    );
+    assert(
+      typeof r2 === "object" && r2 !== null,
+      "workspace.create returned non-object"
+    );
 
-  const wsId =
-    (r2 as any)?.structuredContent?.workspace_id ??
-    JSON.parse((r2 as any)?.content?.[0]?.text ?? "{}")?.workspace_id;
-  assert(typeof wsId === "string" && wsId.length > 0, "Missing workspace_id");
+    const wsId =
+      (r2 as any)?.structuredContent?.workspace_id ??
+      JSON.parse((r2 as any)?.content?.[0]?.text ?? "{}")?.workspace_id;
+    assert(typeof wsId === "string" && wsId.length > 0, "Missing workspace_id");
 
-  const r3 = await client.callTool({
-    name: "workspace.get",
-    arguments: { workspace_id: wsId },
-  });
-  assert(typeof r3 === "object" && r3 !== null, "workspace.get returned non-object");
+    const r3 = await withTimeout(
+      "workspace.get",
+      20_000,
+      client.callTool({
+        name: "workspace.get",
+        arguments: { workspace_id: wsId },
+      })
+    );
+    assert(
+      typeof r3 === "object" && r3 !== null,
+      "workspace.get returned non-object"
+    );
 
   // Lock + artifact basic checks.
-  const holderId = "smoke-holder";
-  const lock = await client.callTool({
-    name: "workspace.lock",
-    arguments: { workspace_id: wsId, holder_id: holderId, ttl_ms: 60_000 },
-  });
-  const lockOk =
-    (lock as any)?.structuredContent?.ok ??
-    JSON.parse((lock as any)?.content?.[0]?.text ?? "{}")?.ok;
-  assert(lockOk === true, "workspace.lock did not return ok=true");
+    const holderId = "smoke-holder";
+    const lock = await withTimeout(
+      "workspace.lock",
+      20_000,
+      client.callTool({
+        name: "workspace.lock",
+        arguments: { workspace_id: wsId, holder_id: holderId, ttl_ms: 60_000 },
+      })
+    );
+    const lockOk =
+      (lock as any)?.structuredContent?.ok ??
+      JSON.parse((lock as any)?.content?.[0]?.text ?? "{}")?.ok;
+    assert(lockOk === true, "workspace.lock did not return ok=true");
+
+  // apply_patch should fail without holder_id (mutation requires lock + holder_id).
+    const applyNoHolder = await withTimeout(
+      "workspace.apply_patch (no holder)",
+      20_000,
+      client.callTool({
+        name: "workspace.apply_patch",
+        arguments: {
+          workspace_id: wsId,
+          patch: "diff --git a/README.md b/README.md\n",
+          check: true,
+        },
+      })
+    );
+    const applyNoHolderOk =
+      (applyNoHolder as any)?.structuredContent?.ok ??
+      JSON.parse((applyNoHolder as any)?.content?.[0]?.text ?? "{}")?.ok;
+    assert(
+      applyNoHolderOk === false,
+      "workspace.apply_patch should deny without holder_id"
+    );
+
+  // apply_patch check failure with holder_id should return ok=false.
+    const applyCheckFail = await withTimeout(
+      "workspace.apply_patch (check fail)",
+      20_000,
+      client.callTool({
+        name: "workspace.apply_patch",
+        arguments: {
+          workspace_id: wsId,
+          holder_id: holderId,
+          check: true,
+          patch: "this is not a patch\n",
+        },
+      })
+    );
+    const applyCheckFailOk =
+      (applyCheckFail as any)?.structuredContent?.ok ??
+      JSON.parse((applyCheckFail as any)?.content?.[0]?.text ?? "{}")?.ok;
+    assert(
+      applyCheckFailOk === false,
+      "workspace.apply_patch check should fail on invalid patch"
+    );
+
+  // apply_patch success: add a new file.
+  const patchOk =
+    "diff --git a/NEWFILE.txt b/NEWFILE.txt\n" +
+    "new file mode 100644\n" +
+    "index 0000000..3b18e51\n" +
+    "--- /dev/null\n" +
+    "+++ b/NEWFILE.txt\n" +
+    "@@ -0,0 +1 @@\n" +
+    "+hello from patch\n";
+
+    const applyOk = await withTimeout(
+      "workspace.apply_patch (success)",
+      20_000,
+      client.callTool({
+        name: "workspace.apply_patch",
+        arguments: {
+          workspace_id: wsId,
+          holder_id: holderId,
+          check: true,
+          patch: patchOk,
+        },
+      })
+    );
+    const applyOkOk =
+      (applyOk as any)?.structuredContent?.ok ??
+      JSON.parse((applyOk as any)?.content?.[0]?.text ?? "{}")?.ok;
+    assert(applyOkOk === true, "workspace.apply_patch did not return ok=true");
+
+    const patchArtifactId =
+      (applyOk as any)?.structuredContent?.patch_artifact_id ??
+      JSON.parse((applyOk as any)?.content?.[0]?.text ?? "{}")?.patch_artifact_id;
+    assert(
+      typeof patchArtifactId === "string" && patchArtifactId.length > 0,
+      "Missing patch_artifact_id"
+    );
+
+  // Verify patch was stored as an artifact.
+    const patchArtifact = await withTimeout(
+      "artifact.get (patch)",
+      20_000,
+      client.callTool({
+        name: "artifact.get",
+        arguments: { workspace_id: wsId, artifact_id: patchArtifactId },
+      })
+    );
+    const patchContent =
+      (patchArtifact as any)?.structuredContent?.artifact?.content ??
+      JSON.parse((patchArtifact as any)?.content?.[0]?.text ?? "{}")?.artifact?.content;
+    assert(
+      typeof patchContent === "string" && patchContent.includes("NEWFILE.txt"),
+      "Expected patch artifact content to include NEWFILE.txt"
+    );
 
   // Close should be denied without the correct holder_id when locked.
-  const closeDenied = await client.callTool({
-    name: "workspace.close",
-    arguments: { workspace_id: wsId },
-  });
-  const closeDeniedOk =
-    (closeDenied as any)?.structuredContent?.ok ??
-    JSON.parse((closeDenied as any)?.content?.[0]?.text ?? "{}")?.ok;
-  assert(closeDeniedOk === false, "workspace.close should be denied while locked");
+    const closeDenied = await withTimeout(
+      "workspace.close (denied)",
+      20_000,
+      client.callTool({
+        name: "workspace.close",
+        arguments: { workspace_id: wsId },
+      })
+    );
+    const closeDeniedOk =
+      (closeDenied as any)?.structuredContent?.ok ??
+      JSON.parse((closeDenied as any)?.content?.[0]?.text ?? "{}")?.ok;
+    assert(closeDeniedOk === false, "workspace.close should be denied while locked");
 
-  const put = await client.callTool({
-    name: "artifact.put",
-    arguments: {
-      workspace_id: wsId,
-      type: "log",
-      name: "smoke-log",
-      content: "hello artifact\n",
-      content_type: "text/plain",
-    },
-  });
-  const artId =
-    (put as any)?.structuredContent?.artifact_id ??
-    JSON.parse((put as any)?.content?.[0]?.text ?? "{}")?.artifact_id;
-  assert(typeof artId === "string" && artId.length > 0, "Missing artifact_id");
+    const put = await withTimeout(
+      "artifact.put",
+      20_000,
+      client.callTool({
+        name: "artifact.put",
+        arguments: {
+          workspace_id: wsId,
+          type: "log",
+          name: "smoke-log",
+          content: "hello artifact\n",
+          content_type: "text/plain",
+        },
+      })
+    );
+    const artId =
+      (put as any)?.structuredContent?.artifact_id ??
+      JSON.parse((put as any)?.content?.[0]?.text ?? "{}")?.artifact_id;
+    assert(typeof artId === "string" && artId.length > 0, "Missing artifact_id");
 
-  const list = await client.callTool({
-    name: "artifact.list",
-    arguments: { workspace_id: wsId, type: "log" },
-  });
-  const artifacts =
-    (list as any)?.structuredContent?.artifacts ??
-    JSON.parse((list as any)?.content?.[0]?.text ?? "{}")?.artifacts;
-  assert(Array.isArray(artifacts) && artifacts.length >= 1, "artifact.list empty");
+    const list = await withTimeout(
+      "artifact.list",
+      20_000,
+      client.callTool({
+        name: "artifact.list",
+        arguments: { workspace_id: wsId, type: "log" },
+      })
+    );
+    const artifacts =
+      (list as any)?.structuredContent?.artifacts ??
+      JSON.parse((list as any)?.content?.[0]?.text ?? "{}")?.artifacts;
+    assert(Array.isArray(artifacts) && artifacts.length >= 1, "artifact.list empty");
 
-  const get = await client.callTool({
-    name: "artifact.get",
-    arguments: { workspace_id: wsId, artifact_id: artId },
-  });
-  const content =
-    (get as any)?.structuredContent?.artifact?.content ??
-    JSON.parse((get as any)?.content?.[0]?.text ?? "{}")?.artifact?.content;
-  assert(content === "hello artifact\n", "artifact.get content mismatch");
+    const get = await withTimeout(
+      "artifact.get (log)",
+      20_000,
+      client.callTool({
+        name: "artifact.get",
+        arguments: { workspace_id: wsId, artifact_id: artId },
+      })
+    );
+    const content =
+      (get as any)?.structuredContent?.artifact?.content ??
+      JSON.parse((get as any)?.content?.[0]?.text ?? "{}")?.artifact?.content;
+    assert(content === "hello artifact\n", "artifact.get content mismatch");
 
-  const r4 = await client.callTool({
-    name: "workspace.list",
-    arguments: { status: "open" },
-  });
-  assert(
-    typeof r4 === "object" && r4 !== null,
-    "workspace.list returned non-object"
-  );
+    const r4 = await withTimeout(
+      "workspace.list (open)",
+      20_000,
+      client.callTool({
+        name: "workspace.list",
+        arguments: { status: "open" },
+      })
+    );
+    assert(
+      typeof r4 === "object" && r4 !== null,
+      "workspace.list returned non-object"
+    );
 
-  const r5 = await client.callTool({
-    name: "workspace.close",
-    arguments: { workspace_id: wsId, holder_id: holderId },
-  });
-  assert(
-    typeof r5 === "object" && r5 !== null,
-    "workspace.close returned non-object"
-  );
+    const r5 = await withTimeout(
+      "workspace.close (allowed)",
+      60_000,
+      client.callTool({
+        name: "workspace.close",
+        arguments: { workspace_id: wsId, holder_id: holderId },
+      })
+    );
+    assert(
+      typeof r5 === "object" && r5 !== null,
+      "workspace.close returned non-object"
+    );
 
-  await transport.close();
-
-  fs.rmSync(tmpRoot, { recursive: true, force: true });
+    await withTimeout("transport.close", 20_000, transport.close());
+  } finally {
+    // Ensure the child server process is not leaked on assertion failures.
+    await transport.close().catch(() => {});
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
 
   console.log(
     "Phase 1 smoke test passed (tool registration + workspace lifecycle + locks + artifacts)."
