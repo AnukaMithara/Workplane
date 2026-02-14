@@ -26,6 +26,9 @@ Key rules:
 - Require patches/diffs as outputs, and store important logs via `artifact.put`
 - Require evidence (build/test output) for changes
 
+Full copy/paste prompt:
+- [prompts/workplane-orchestrator-initial-system-prompt.md](prompts/workplane-orchestrator-initial-system-prompt.md)
+
 ### Worker: Task Prompt Template
 
 Inputs:
