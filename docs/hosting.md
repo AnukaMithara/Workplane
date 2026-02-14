@@ -26,3 +26,8 @@ Notes:
 - Workplane must keep stdout reserved for MCP JSON-RPC. Logs go to stderr.
 - Always set a dedicated `WORKPLANE_ROOT` for local testing so you can delete it safely.
 
+## See Also
+- [README.md](README.md)
+- [configuration.md](configuration.md)
+- [tools.md](tools.md)
+

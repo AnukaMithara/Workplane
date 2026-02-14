@@ -34,3 +34,9 @@ export WORKPLANE_COMMAND_DENYLIST="powershell,cmd,rm,del"
 Notes:
 - This is a Phase 1 safety mechanism. Expect it to evolve into allowlists and/or per-tool policies.
 
+## See Also
+- [README.md](README.md)
+- [tools.md](tools.md)
+- [architecture.md](architecture.md)
+- [hosting.md](hosting.md)
+

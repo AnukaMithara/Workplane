@@ -3,21 +3,21 @@
 Date: 2026-02-14
 
 ## What Exists Today
-- `docs/requirements.md`
+- [requirements.md](requirements.md)
   - Phase 1 functional requirements (tools, safety constraints, persistence, evidence).
-- `docs/architecture.md`
+- [architecture.md](architecture.md)
   - Implementation approach, safety guardrails, filesystem layout, and command execution safety rules.
-- `docs/tools.md`
+- [tools.md](tools.md)
   - Tool list, conventions, and request/response examples.
-- `docs/roadmap.md`
+- [roadmap.md](roadmap.md)
   - Milestone tracker.
-- `docs/README.md`
+- [README.md](README.md)
   - Documentation index.
-- `docs/configuration.md`
+- [configuration.md](configuration.md)
   - Environment variables and command policy configuration.
-- `docs/hosting.md`
+- [hosting.md](hosting.md)
   - How to run Workplane from an MCP host.
-- `docs/workflows.md`
+- [workflows.md](workflows.md)
   - Recommended multi-agent workflow and prompt templates.
 
 ## What We Implemented (Phase 1)
@@ -47,7 +47,7 @@ Date: 2026-02-14
   - apply_patch
   - diff
   - run (success, denylist, timeout)
-- `examples/two-workspaces-demo/` demonstrates two independent workspaces from the same repo.
+- [../examples/two-workspaces-demo/](../examples/two-workspaces-demo/) demonstrates two independent workspaces from the same repo.
 
 ## What We Still Need To Do (Phase 1 Hardening)
 1. Command policy hardening for `workspace.run`:
@@ -58,4 +58,9 @@ Date: 2026-02-14
    - `workspace.note.add`, `workspace.note.list`
 4. Persistence upgrade (optional for v0.1):
    - move from JSON (`state.json`) to SQLite
+
+## See Also
+- [README.md](README.md)
+- [roadmap.md](roadmap.md)
+- [tools.md](tools.md)
 

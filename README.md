@@ -61,18 +61,18 @@ Environment variables:
 - `WORKPLANE_ROOT`: Workplane data root directory (default: `~/.workplane`)
 - `WORKPLANE_COMMAND_DENYLIST`: comma-separated executable denylist for `workspace.run`
 
-Docs: `docs/configuration.md`
+Docs: [docs/configuration.md](docs/configuration.md)
 
 ## Documentation
-- `docs/README.md` (start here)
-- `docs/tools.md` (schemas + examples)
-- `docs/architecture.md` (design + safety guardrails)
-- `docs/requirements.md` (Phase 1 requirements)
-- `docs/roadmap.md` (milestones)
+- [docs/README.md](docs/README.md) (start here)
+- [docs/tools.md](docs/tools.md) (schemas + examples)
+- [docs/architecture.md](docs/architecture.md) (design + safety guardrails)
+- [docs/requirements.md](docs/requirements.md) (Phase 1 requirements)
+- [docs/roadmap.md](docs/roadmap.md) (milestones)
 
 ## Examples
-- `examples/phase1-smoke/` (end-to-end smoke test)
-- `examples/two-workspaces-demo/` (create two workspaces, patch/run/diff, list artifacts)
+- [examples/phase1-smoke/](examples/phase1-smoke/) (end-to-end smoke test)
+- [examples/two-workspaces-demo/](examples/two-workspaces-demo/) (create two workspaces, patch/run/diff, list artifacts)
 
 ## Development
 Scripts:
@@ -81,8 +81,8 @@ Scripts:
 - `npm start` runs the built server
 - `npm run smoke` runs an end-to-end smoke test against `dist/server.js`
 
-Contributing: `CONTRIBUTING.md`
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
-`LICENSE`
+[LICENSE](LICENSE)
 

@@ -1,6 +1,6 @@
 # Workplane Roadmap (Phase 1)
 
-This roadmap tracks Phase 1 milestones from `AGENTS.md`.
+This roadmap tracks Phase 1 milestones from [../AGENTS.md](../AGENTS.md).
 
 ## Status Legend
 - Done: implemented and smoke-tested
@@ -40,9 +40,14 @@ This roadmap tracks Phase 1 milestones from `AGENTS.md`.
 - Additional safety checks for command execution and filesystem operations (ongoing hardening)
 
 ## Required Example (Done)
-- `examples/two-workspaces-demo/` demonstrating:
+- [../examples/two-workspaces-demo/](../examples/two-workspaces-demo/) demonstrating:
   - creating two workspaces
   - applying patches independently
   - running commands
   - retrieving diffs/logs
+
+## See Also
+- [README.md](README.md)
+- [progress-report.md](progress-report.md)
+- [requirements.md](requirements.md)
 

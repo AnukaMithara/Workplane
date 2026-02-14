@@ -112,3 +112,9 @@ Remaining milestones will add:
 - More tests beyond smoke tests (unit tests for core modules)
 - Optional notes tools (`workspace.note.add` / `workspace.note.list`)
 - SQLite persistence (replacing `state.json`)
+
+## See Also
+- [README.md](README.md)
+- [tools.md](tools.md)
+- [configuration.md](configuration.md)
+- [requirements.md](requirements.md)
