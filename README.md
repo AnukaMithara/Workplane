@@ -1,6 +1,6 @@
 # Workplane
 
-Workplane is an **MCP (Model Context Protocol) stdio server** that provides a **Git worktree-based Workspace Manager** for safe, reproducible multi-agent software delivery.
+Workplane is an **MCP (Model Context Protocol) stdio server** that provides a **Git worktree-based Workspace Manager** for safe, reproducible **Multi-agent** software delivery.
 
 Keywords: MCP server, Model Context Protocol, Git worktrees, workspace isolation, patch application, command execution, evidence capture, artifact store, locking, multi-agent development.
 
