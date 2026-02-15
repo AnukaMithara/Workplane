@@ -64,6 +64,8 @@ To keep Phase 1 maintainable, several "safest path" refactors were completed wit
 - Tools layer split into per-tool modules (public tool names unchanged):
   - `src/tools/workspace/*` for lifecycle tools
   - `src/tools/codeOps/*` for apply_patch/diff/run
+- Artifact tools split into per-tool modules (public tool names unchanged):
+  - `src/tools/artifacts/*` for put/get/list
 - JSON store hardening (`src/core/store.ts`):
   - in-process serialization of state mutations to prevent lost updates under concurrent tool calls
   - safer atomic replace behavior on Windows
