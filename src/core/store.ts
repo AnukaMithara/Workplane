@@ -81,12 +81,58 @@ async function readJsonIfExists(p: string): Promise<StateFile> {
   }
 }
 
+class AsyncMutex {
+  private chain: Promise<void> = Promise.resolve();
+
+  async run<T>(fn: () => Promise<T>): Promise<T> {
+    const after = this.chain;
+    let release!: () => void;
+    this.chain = new Promise<void>((r) => {
+      release = r;
+    });
+
+    await after;
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  }
+}
+
+const mutexByStateFile = new Map<string, AsyncMutex>();
+
+function mutexForStateFile(stateFile: string) {
+  let m = mutexByStateFile.get(stateFile);
+  if (!m) {
+    m = new AsyncMutex();
+    mutexByStateFile.set(stateFile, m);
+  }
+  return m;
+}
+
+async function replaceFile(tmp: string, dest: string) {
+  try {
+    await fs.rename(tmp, dest);
+    return;
+  } catch (err: any) {
+    // On Windows, rename fails if dest exists. This is not perfectly atomic, but it is safe and
+    // prevents cross-platform write failures.
+    if (err?.code === "EEXIST" || err?.code === "EPERM" || err?.code === "EACCES") {
+      await fs.rm(dest, { force: true });
+      await fs.rename(tmp, dest);
+      return;
+    }
+    throw err;
+  }
+}
+
 async function atomicWriteJson(p: string, value: unknown) {
   const dir = path.dirname(p);
   ensureDir(dir);
-  const tmp = p + ".tmp";
+  const tmp = `${p}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(value, null, 2) + "\n", "utf8");
-  await fs.rename(tmp, p);
+  await replaceFile(tmp, p);
 }
 
 export class WorkplaneStore {
@@ -101,6 +147,17 @@ export class WorkplaneStore {
 
   getRoot() {
     return this.root;
+  }
+
+  private async mutateState<T>(fn: (s: StateFile) => Promise<T> | T): Promise<T> {
+    const m = mutexForStateFile(this.stateFile);
+    return await m.run(async () => {
+      const s = await readJsonIfExists(this.stateFile);
+      const out = await fn(s);
+      s.updated_at = new Date().toISOString();
+      await atomicWriteJson(this.stateFile, s);
+      return out;
+    });
   }
 
   async getWorkspace(id: string): Promise<WorkspaceRecord | null> {
@@ -126,10 +183,9 @@ export class WorkplaneStore {
   }
 
   async upsertWorkspace(rec: WorkspaceRecord) {
-    const s = await readJsonIfExists(this.stateFile);
-    s.workspaces[rec.workspace_id] = rec;
-    s.updated_at = new Date().toISOString();
-    await atomicWriteJson(this.stateFile, s);
+    await this.mutateState(async (s) => {
+      s.workspaces[rec.workspace_id] = rec;
+    });
   }
 
   async getLock(workspace_id: string): Promise<WorkspaceLockRecord | null> {
@@ -138,19 +194,17 @@ export class WorkplaneStore {
   }
 
   async upsertLock(rec: WorkspaceLockRecord) {
-    const s = await readJsonIfExists(this.stateFile);
-    s.locks = s.locks ?? {};
-    s.locks[rec.workspace_id] = rec;
-    s.updated_at = new Date().toISOString();
-    await atomicWriteJson(this.stateFile, s);
+    await this.mutateState(async (s) => {
+      s.locks = s.locks ?? {};
+      s.locks[rec.workspace_id] = rec;
+    });
   }
 
   async deleteLock(workspace_id: string) {
-    const s = await readJsonIfExists(this.stateFile);
-    if (!s.locks) return;
-    delete s.locks[workspace_id];
-    s.updated_at = new Date().toISOString();
-    await atomicWriteJson(this.stateFile, s);
+    await this.mutateState(async (s) => {
+      if (!s.locks) return;
+      delete s.locks[workspace_id];
+    });
   }
 
   async getArtifact(workspace_id: string, artifact_id: string): Promise<ArtifactRecord | null> {
@@ -172,10 +226,9 @@ export class WorkplaneStore {
   }
 
   async upsertArtifact(rec: ArtifactRecord) {
-    const s = await readJsonIfExists(this.stateFile);
-    s.artifacts = s.artifacts ?? {};
-    s.artifacts[rec.artifact_id] = rec;
-    s.updated_at = new Date().toISOString();
-    await atomicWriteJson(this.stateFile, s);
+    await this.mutateState(async (s) => {
+      s.artifacts = s.artifacts ?? {};
+      s.artifacts[rec.artifact_id] = rec;
+    });
   }
 }
