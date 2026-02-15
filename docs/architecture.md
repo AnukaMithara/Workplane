@@ -41,7 +41,13 @@ A workspace is:
 - Created at a specific `base_ref` resolved to a concrete `base_sha`
 - Created on a dedicated branch (`branch_name`)
 
-Workspace metadata is persisted to `state.json` via `src/core/store.ts` and the operations are implemented in `src/core/workspaces.ts`.
+Workspace metadata is persisted to `state.json` via `src/core/store.ts`.
+
+Workspace lifecycle is orchestrated by `src/core/workspaces.ts` and built on smaller core modules:
+
+- `src/core/repoCache.ts` (repo cache clone/fetch + base sha resolution)
+- `src/core/worktree.ts` (worktree add/remove/prune helpers)
+- `src/core/workspaceMarker.ts` (marker file write/verify)
 
 ## Repo Cache Strategy
 
@@ -64,6 +70,8 @@ Workplane enforces "only delete what we created" for `workspace.close`:
 
 - Each created worktree contains a marker file `.workplane-workspace.json`.
 - `workspace.close` refuses to remove a worktree if the marker is missing or does not match the `workspace_id`.
+
+Marker helpers live in `src/core/workspaceMarker.ts`.
 
 Workplane enforces "single writer" via workspace locks:
 
@@ -105,7 +113,12 @@ Implementation: `src/core/exec.ts`, `src/core/git.ts`.
 Phase 1 persistence uses a JSON state file:
 
 - `${WORKPLANE_ROOT}/state.json`
-- Atomic write pattern: write to `.tmp` then rename
+- Atomic write pattern: write to a temporary file then replace the state file.
+- In-process mutation serialization: state read-modify-write operations are guarded by an async mutex so concurrent tool calls in the same server process do not clobber each other.
+
+Notes:
+
+- This does not provide cross-process safety. Today, assume a single Workplane server process per `WORKPLANE_ROOT`.
 
 Implementation: `src/core/store.ts`.
 

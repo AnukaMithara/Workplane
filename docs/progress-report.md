@@ -50,6 +50,23 @@ Date: 2026-02-15
 - Unit tests (Vitest):
   - `npm test` runs build + unit tests
   - initial coverage: `pathSafety`, lock enforcement semantics, and `workspace.run` denylist/parse/timeout + artifact evidence
+  - added coverage: `workspace.close` safety + lock enforcement edge cases, and JSON store write-safety on Windows
+
+## Refactors (Behavior-Preserving)
+
+To keep Phase 1 maintainable, several "safest path" refactors were completed with tests as guardrails:
+
+- Workspace lifecycle core split into focused modules:
+  - `src/core/repoCache.ts` (repo cache clone/fetch + base sha resolution)
+  - `src/core/worktree.ts` (worktree add/remove/prune helpers)
+  - `src/core/workspaceMarker.ts` (marker file write/verify)
+  - `src/core/workspaces.ts` (thin orchestration layer)
+- Tools layer split into per-tool modules (public tool names unchanged):
+  - `src/tools/workspace/*` for lifecycle tools
+  - `src/tools/codeOps/*` for apply_patch/diff/run
+- JSON store hardening (`src/core/store.ts`):
+  - in-process serialization of state mutations to prevent lost updates under concurrent tool calls
+  - safer atomic replace behavior on Windows
 
 ## Repo Scripts / Examples
 
