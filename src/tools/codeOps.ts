@@ -4,7 +4,7 @@ import { checkWorkspaceMutationAllowed } from "../core/locks.js";
 import { workspaceApplyPatch } from "../core/patches.js";
 import { workspaceDiff } from "../core/diffs.js";
 import { workspaceRun } from "../core/runs.js";
-import { ResultBaseSchema, notImplemented, toolErr, toolOk } from "./common.js";
+import { ResultBaseSchema, toolErr, toolOk } from "./common.js";
 
 export function registerCodeOpsTools(server: McpServer) {
   server.registerTool(
@@ -41,10 +41,7 @@ export function registerCodeOpsTools(server: McpServer) {
           patch_artifact_id: r.patch_artifact_id,
         });
       } catch (err: any) {
-        return toolErr(
-          "APPLY_PATCH_FAILED",
-          err?.message ?? "workspace.apply_patch failed"
-        );
+        return toolErr("APPLY_PATCH_FAILED", err?.message ?? "workspace.apply_patch failed");
       }
     }
   );
@@ -91,8 +88,7 @@ export function registerCodeOpsTools(server: McpServer) {
   server.registerTool(
     "workspace.run",
     {
-      description:
-        "Run a command in the workspace and capture bounded stdout/stderr evidence.",
+      description: "Run a command in the workspace and capture bounded stdout/stderr evidence.",
       inputSchema: {
         workspace_id: z.string().min(1),
         command: z.string().min(1).describe("Command to run (string form)"),

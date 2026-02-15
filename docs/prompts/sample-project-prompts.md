@@ -147,4 +147,3 @@ Instructions:
 - Require: patch/diff + evidence logs as artifacts.
 - Keep a Project Journal artifact with status updates.
 ```
-

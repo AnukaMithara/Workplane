@@ -64,17 +64,13 @@ async function ensureRepoCache(input: WorkspaceCreateInput) {
     if (input.repo_url) {
       const r = await git(["clone", input.repo_url, repoCachePath]);
       if (!r.ok) {
-        throw new Error(
-          `Failed to clone repo_url into cache: ${r.stderr || r.stdout}`.trim()
-        );
+        throw new Error(`Failed to clone repo_url into cache: ${r.stderr || r.stdout}`.trim());
       }
     } else if (input.repo_path) {
       const src = path.resolve(input.repo_path);
       const r = await git(["clone", src, repoCachePath]);
       if (!r.ok) {
-        throw new Error(
-          `Failed to clone repo_path into cache: ${r.stderr || r.stdout}`.trim()
-        );
+        throw new Error(`Failed to clone repo_path into cache: ${r.stderr || r.stdout}`.trim());
       }
     } else {
       throw new Error("Either repo_url or repo_path is required.");
@@ -154,9 +150,7 @@ export async function workspaceCreate(input: WorkspaceCreateInput) {
     base_sha,
   ]);
   if (!add.ok) {
-    throw new Error(
-      `Failed to create worktree: ${add.stderr || add.stdout}`.trim()
-    );
+    throw new Error(`Failed to create worktree: ${add.stderr || add.stdout}`.trim());
   }
 
   await writeWorkspaceMarker(worktreePath, workspace_id);
@@ -235,8 +229,7 @@ export async function workspaceClose(input: WorkspaceCloseInput) {
       ok: false as const,
       error: {
         code: "SAFETY_CHECK_FAILED",
-        message:
-          "Workspace marker missing or does not match; refusing to remove worktree.",
+        message: "Workspace marker missing or does not match; refusing to remove worktree.",
       },
     };
   }

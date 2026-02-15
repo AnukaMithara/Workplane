@@ -96,7 +96,7 @@ async function main() {
       assert(toolNames.has(name), `Missing expected tool: ${name}`);
     }
 
-  // Optional tools are allowed to exist; we just verify registration if present.
+    // Optional tools are allowed to exist; we just verify registration if present.
     const optional = ["workspace.note.add", "workspace.note.list"];
     for (const name of optional) {
       if (!toolNames.has(name)) {
@@ -112,10 +112,7 @@ async function main() {
         arguments: {},
       })
     );
-    assert(
-      typeof r1 === "object" && r1 !== null,
-      "workspace.list returned non-object"
-    );
+    assert(typeof r1 === "object" && r1 !== null, "workspace.list returned non-object");
 
     const r2 = await withTimeout(
       "workspace.create",
@@ -125,10 +122,7 @@ async function main() {
         arguments: { repo_path: tmpRepo, base_ref: "HEAD" },
       })
     );
-    assert(
-      typeof r2 === "object" && r2 !== null,
-      "workspace.create returned non-object"
-    );
+    assert(typeof r2 === "object" && r2 !== null, "workspace.create returned non-object");
 
     const wsId =
       (r2 as any)?.structuredContent?.workspace_id ??
@@ -143,12 +137,9 @@ async function main() {
         arguments: { workspace_id: wsId },
       })
     );
-    assert(
-      typeof r3 === "object" && r3 !== null,
-      "workspace.get returned non-object"
-    );
+    assert(typeof r3 === "object" && r3 !== null, "workspace.get returned non-object");
 
-  // Lock + artifact basic checks.
+    // Lock + artifact basic checks.
     const holderId = "smoke-holder";
     const lock = await withTimeout(
       "workspace.lock",
@@ -163,7 +154,7 @@ async function main() {
       JSON.parse((lock as any)?.content?.[0]?.text ?? "{}")?.ok;
     assert(lockOk === true, "workspace.lock did not return ok=true");
 
-  // apply_patch should fail without holder_id (mutation requires lock + holder_id).
+    // apply_patch should fail without holder_id (mutation requires lock + holder_id).
     const applyNoHolder = await withTimeout(
       "workspace.apply_patch (no holder)",
       20_000,
@@ -179,12 +170,9 @@ async function main() {
     const applyNoHolderOk =
       (applyNoHolder as any)?.structuredContent?.ok ??
       JSON.parse((applyNoHolder as any)?.content?.[0]?.text ?? "{}")?.ok;
-    assert(
-      applyNoHolderOk === false,
-      "workspace.apply_patch should deny without holder_id"
-    );
+    assert(applyNoHolderOk === false, "workspace.apply_patch should deny without holder_id");
 
-  // apply_patch check failure with holder_id should return ok=false.
+    // apply_patch check failure with holder_id should return ok=false.
     const applyCheckFail = await withTimeout(
       "workspace.apply_patch (check fail)",
       20_000,
@@ -201,19 +189,16 @@ async function main() {
     const applyCheckFailOk =
       (applyCheckFail as any)?.structuredContent?.ok ??
       JSON.parse((applyCheckFail as any)?.content?.[0]?.text ?? "{}")?.ok;
-    assert(
-      applyCheckFailOk === false,
-      "workspace.apply_patch check should fail on invalid patch"
-    );
+    assert(applyCheckFailOk === false, "workspace.apply_patch check should fail on invalid patch");
 
-  // apply_patch success: modify a tracked file so `git diff` can see it.
-  const patchOk =
-    "diff --git a/README.md b/README.md\n" +
-    "--- a/README.md\n" +
-    "+++ b/README.md\n" +
-    "@@ -1 +1,2 @@\n" +
-    " hello\n" +
-    "+hello from patch\n";
+    // apply_patch success: modify a tracked file so `git diff` can see it.
+    const patchOk =
+      "diff --git a/README.md b/README.md\n" +
+      "--- a/README.md\n" +
+      "+++ b/README.md\n" +
+      "@@ -1 +1,2 @@\n" +
+      " hello\n" +
+      "+hello from patch\n";
 
     const applyOk = await withTimeout(
       "workspace.apply_patch (success)",
@@ -241,7 +226,7 @@ async function main() {
       "Missing patch_artifact_id"
     );
 
-  // Verify patch was stored as an artifact.
+    // Verify patch was stored as an artifact.
     const patchArtifact = await withTimeout(
       "artifact.get (patch)",
       20_000,
@@ -258,7 +243,7 @@ async function main() {
       "Expected patch artifact content to include README.md"
     );
 
-  // workspace.diff should include the new file content, and can be stored as an artifact.
+    // workspace.diff should include the new file content, and can be stored as an artifact.
     const diffRes = await withTimeout(
       "workspace.diff",
       20_000,
@@ -304,12 +289,11 @@ async function main() {
       (diffArtifact as any)?.structuredContent?.artifact?.content ??
       JSON.parse((diffArtifact as any)?.content?.[0]?.text ?? "{}")?.artifact?.content;
     assert(
-      typeof diffArtifactContent === "string" &&
-        diffArtifactContent.includes("hello from patch"),
+      typeof diffArtifactContent === "string" && diffArtifactContent.includes("hello from patch"),
       "Expected diff artifact to include patched content"
     );
 
-  // workspace.run success: run a harmless command and verify log artifacts exist.
+    // workspace.run success: run a harmless command and verify log artifacts exist.
     const runRes = await withTimeout(
       "workspace.run (git status)",
       20_000,
@@ -336,14 +320,8 @@ async function main() {
     const stderrArtId =
       (runRes as any)?.structuredContent?.stderr_artifact_id ??
       JSON.parse((runRes as any)?.content?.[0]?.text ?? "{}")?.stderr_artifact_id;
-    assert(
-      typeof stdoutArtId === "string" && stdoutArtId.length > 0,
-      "Missing stdout_artifact_id"
-    );
-    assert(
-      typeof stderrArtId === "string" && stderrArtId.length > 0,
-      "Missing stderr_artifact_id"
-    );
+    assert(typeof stdoutArtId === "string" && stdoutArtId.length > 0, "Missing stdout_artifact_id");
+    assert(typeof stderrArtId === "string" && stderrArtId.length > 0, "Missing stderr_artifact_id");
 
     const stdoutArt = await withTimeout(
       "artifact.get (stdout)",
@@ -371,7 +349,7 @@ async function main() {
       JSON.parse((stderrArt as any)?.content?.[0]?.text ?? "{}")?.artifact?.content;
     assert(typeof stderrContent === "string", "stderr artifact missing content");
 
-  // workspace.run denylist: powershell should be denied by default.
+    // workspace.run denylist: powershell should be denied by default.
     const denied = await withTimeout(
       "workspace.run (denied)",
       20_000,
@@ -396,7 +374,7 @@ async function main() {
       JSON.parse((denied as any)?.content?.[0]?.text ?? "{}")?.error?.code;
     assert(deniedCode === "DENIED", "Expected DENIED error code");
 
-  // workspace.run timeout: run a long node process and enforce a short timeout.
+    // workspace.run timeout: run a long node process and enforce a short timeout.
     const timeoutRes = await withTimeout(
       "workspace.run (timeout)",
       20_000,
@@ -422,7 +400,7 @@ async function main() {
       JSON.parse((timeoutRes as any)?.content?.[0]?.text ?? "{}")?.timed_out;
     assert(timedOut === true, "Expected timed_out=true");
 
-  // Close should be denied without the correct holder_id when locked.
+    // Close should be denied without the correct holder_id when locked.
     const closeDenied = await withTimeout(
       "workspace.close (denied)",
       20_000,
@@ -489,10 +467,7 @@ async function main() {
         arguments: { status: "open" },
       })
     );
-    assert(
-      typeof r4 === "object" && r4 !== null,
-      "workspace.list returned non-object"
-    );
+    assert(typeof r4 === "object" && r4 !== null, "workspace.list returned non-object");
 
     const r5 = await withTimeout(
       "workspace.close (allowed)",
@@ -502,10 +477,7 @@ async function main() {
         arguments: { workspace_id: wsId, holder_id: holderId },
       })
     );
-    assert(
-      typeof r5 === "object" && r5 !== null,
-      "workspace.close returned non-object"
-    );
+    assert(typeof r5 === "object" && r5 !== null, "workspace.close returned non-object");
 
     await withTimeout("transport.close", 20_000, transport.close());
   } finally {

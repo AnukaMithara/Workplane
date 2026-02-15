@@ -10,17 +10,30 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/server.js",
     "smoke": "npm run build && tsx examples/phase1-smoke/stdio-smoke.ts",
-    "test": "node -e \"console.log('no tests yet')\""
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier -w .",
+    "format:check": "prettier -c .",
+    "test": "npm run build && vitest run",
+    "test:watch": "npm run build && vitest"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AnukaMithara/Workplane.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "workspace",
+    "git-worktree",
+    "artifacts",
+    "multi-agent"
+  ],
+  "author": "Anuka Mithara Karunanayaka",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/AnukaMithara/Workplane/issues"
   },
@@ -30,8 +43,14 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@eslint/js": "^9.35.0",
     "@types/node": "^25.2.3",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.41.0",
+    "vitest": "^4.0.18"
   }
 }

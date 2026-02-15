@@ -67,11 +67,7 @@ async function readJsonIfExists(p: string): Promise<StateFile> {
     const raw = await fs.readFile(p, "utf8");
     const parsed = JSON.parse(raw) as unknown;
     // Minimal validation: tolerate future schema expansions.
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      "workspaces" in parsed
-    ) {
+    if (typeof parsed === "object" && parsed !== null && "workspaces" in parsed) {
       const state = parsed as StateFile;
       state.workspaces = state.workspaces ?? {};
       state.locks = state.locks ?? {};
@@ -157,10 +153,7 @@ export class WorkplaneStore {
     await atomicWriteJson(this.stateFile, s);
   }
 
-  async getArtifact(
-    workspace_id: string,
-    artifact_id: string
-  ): Promise<ArtifactRecord | null> {
+  async getArtifact(workspace_id: string, artifact_id: string): Promise<ArtifactRecord | null> {
     const s = await readJsonIfExists(this.stateFile);
     const rec = s.artifacts?.[artifact_id];
     if (!rec) return null;
@@ -168,10 +161,7 @@ export class WorkplaneStore {
     return rec;
   }
 
-  async listArtifacts(filters: {
-    workspace_id: string;
-    type?: string;
-  }): Promise<ArtifactRecord[]> {
+  async listArtifacts(filters: { workspace_id: string; type?: string }): Promise<ArtifactRecord[]> {
     const s = await readJsonIfExists(this.stateFile);
     let items = Object.values(s.artifacts ?? {}).filter(
       (a) => a.workspace_id === filters.workspace_id
