@@ -79,4 +79,3 @@ export async function resolveBaseSha(repoCachePath: string, baseRef: string) {
 export async function repoCachePathExists(p: string) {
   return await pathExists(p);
 }
-

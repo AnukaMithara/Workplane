@@ -27,4 +27,3 @@ export async function verifyWorkspaceMarker(worktreePath: string, workspace_id: 
     return false;
   }
 }
-

@@ -10,11 +10,12 @@ import { workspaceLock } from "../dist/core/locks.js";
 async function initGitRepo(repoPath: string) {
   await fs.mkdir(repoPath, { recursive: true });
   expect((await runCmd("git", ["init"], { cwd: repoPath })).code).toBe(0);
-  expect((await runCmd("git", ["config", "user.email", "test@example.com"], { cwd: repoPath })).code)
-    .toBe(0);
-  expect((await runCmd("git", ["config", "user.name", "Workplane Tests"], { cwd: repoPath })).code).toBe(
-    0
-  );
+  expect(
+    (await runCmd("git", ["config", "user.email", "test@example.com"], { cwd: repoPath })).code
+  ).toBe(0);
+  expect(
+    (await runCmd("git", ["config", "user.name", "Workplane Tests"], { cwd: repoPath })).code
+  ).toBe(0);
   await writeFile(path.join(repoPath, "README.md"), "# Test Repo\n");
   expect((await runCmd("git", ["add", "."], { cwd: repoPath })).code).toBe(0);
   expect((await runCmd("git", ["commit", "-m", "init"], { cwd: repoPath })).code).toBe(0);
@@ -61,7 +62,10 @@ describe("workspaces lifecycle", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const r = await workspaceClose({ workspace_id: created.workspace.workspace_id, holder_id: "h1" });
+    const r = await workspaceClose({
+      workspace_id: created.workspace.workspace_id,
+      holder_id: "h1",
+    });
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.error.code).toBe("NOT_LOCKED");
@@ -135,7 +139,10 @@ describe("workspaces lifecycle", () => {
     });
     expect(lock.ok).toBe(true);
 
-    const r = await workspaceClose({ workspace_id: created.workspace.workspace_id, holder_id: "h1" });
+    const r = await workspaceClose({
+      workspace_id: created.workspace.workspace_id,
+      holder_id: "h1",
+    });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
 

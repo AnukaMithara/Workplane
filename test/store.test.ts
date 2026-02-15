@@ -55,4 +55,3 @@ describe("store", () => {
     expect(ws?.status).toBe("closed");
   });
 });
-

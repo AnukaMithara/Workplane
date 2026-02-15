@@ -130,4 +130,3 @@ describe("artifacts", () => {
     expect(list.artifacts.length).toBeGreaterThan(0);
   });
 });
-

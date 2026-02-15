@@ -49,4 +49,3 @@ export function tokenizeCommandLine(input: string): string[] | null {
   if (cur.length) out.push(cur);
   return out.length ? out : null;
 }
-

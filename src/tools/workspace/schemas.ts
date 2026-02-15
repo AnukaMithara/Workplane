@@ -15,4 +15,3 @@ export const WorkspaceInfoSchema = z.object({
   updated_at: z.string().optional(),
   closed_at: z.string().optional(),
 });
-

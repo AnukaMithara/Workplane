@@ -2,22 +2,13 @@ import fs from "node:fs/promises";
 
 import { getWorkplanePaths } from "./config.js";
 import { newId } from "./ids.js";
-import {
-  assertPathWithinRoot,
-  safeResolveChild,
-  assertSafePathSegment,
-} from "./pathSafety.js";
+import { assertPathWithinRoot, safeResolveChild, assertSafePathSegment } from "./pathSafety.js";
 import { ensureGitAvailable } from "./git.js";
 import { WorkplaneStore, type WorkspaceRecord } from "./store.js";
 import { checkWorkspaceMutationAllowed, workspaceRelease } from "./locks.js";
 import { ensureRepoCache, resolveBaseSha } from "./repoCache.js";
 import { verifyWorkspaceMarker, writeWorkspaceMarker } from "./workspaceMarker.js";
-import {
-  worktreeAdd,
-  worktreeRemove,
-  worktreePathExists,
-  worktreePrune,
-} from "./worktree.js";
+import { worktreeAdd, worktreeRemove, worktreePathExists, worktreePrune } from "./worktree.js";
 
 export type WorkspaceCreateInput = {
   repo_url?: string;
