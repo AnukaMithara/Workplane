@@ -1,11 +1,11 @@
-import path from "node:path";
-import { spawn } from "node:child_process";
 import { ensureGitAvailable } from "./git.js";
 import { WorkplaneStore } from "./store.js";
 import { getWorkplanePaths, getCommandDenylist } from "./config.js";
 import { assertPathWithinRoot, assertSafePathSegment } from "./pathSafety.js";
 import { checkWorkspaceMutationAllowed } from "./locks.js";
 import { artifactPut } from "./artifacts.js";
+import { isDeniedCommand, tokenizeCommandLine } from "./runPolicy.js";
+import { spawnCaptured } from "./spawnCaptured.js";
 
 export type WorkspaceRunInput = {
   workspace_id: string;
@@ -39,150 +39,6 @@ export type WorkspaceRunResult =
 
 function nowIso() {
   return new Date().toISOString();
-}
-
-function normalizeExeName(name: string) {
-  const base = name.trim().toLowerCase();
-  // Strip common Windows extensions to make denylist matching consistent.
-  return base.replace(/\.(exe|cmd|bat|com)$/i, "");
-}
-
-function isDeniedCommand(command: string) {
-  const deny = new Set(getCommandDenylist().map(normalizeExeName));
-  const base = path.basename(command);
-  const normalized = normalizeExeName(base);
-  return deny.has(normalized);
-}
-
-function tokenizeCommandLine(input: string): string[] | null {
-  // Minimal argv tokenizer (no shell). Supports:
-  // - whitespace splitting
-  // - double quotes to include spaces
-  // - backslash escaping of quotes inside quoted segments
-  const s = input.trim();
-  if (!s) return null;
-
-  const out: string[] = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-    if (ch === "\\" && inQuotes && i + 1 < s.length && s[i + 1] === '"') {
-      cur += '"';
-      i++;
-      continue;
-    }
-    if (!inQuotes && /\s/.test(ch)) {
-      if (cur.length) {
-        out.push(cur);
-        cur = "";
-      }
-      continue;
-    }
-    cur += ch;
-  }
-  if (inQuotes) return null;
-  if (cur.length) out.push(cur);
-  return out.length ? out : null;
-}
-
-type SpawnCapturedResult = {
-  exitCode: number | null;
-  signal: NodeJS.Signals | null;
-  stdout: string;
-  stderr: string;
-  stdoutTruncated: boolean;
-  stderrTruncated: boolean;
-  durationMs: number;
-  timedOut: boolean;
-};
-
-async function spawnCaptured(
-  file: string,
-  args: string[],
-  opts: { cwd: string; timeoutMs: number; maxOutputBytes: number }
-): Promise<SpawnCapturedResult> {
-  const start = Date.now();
-  const startedAt = Date.now();
-
-  return await new Promise<SpawnCapturedResult>((resolve) => {
-    const child = spawn(file, args, {
-      cwd: opts.cwd,
-      windowsHide: true,
-      shell: false,
-    });
-
-    const max = opts.maxOutputBytes;
-    const stdoutChunks: Buffer[] = [];
-    const stderrChunks: Buffer[] = [];
-    let stdoutBytes = 0;
-    let stderrBytes = 0;
-    let stdoutTruncated = false;
-    let stderrTruncated = false;
-    let timedOut = false;
-
-    const timer = setTimeout(() => {
-      timedOut = true;
-      // Best-effort kill; on Windows this still terminates the process.
-      child.kill("SIGKILL");
-      setTimeout(() => child.kill("SIGTERM"), 200).unref?.();
-    }, opts.timeoutMs);
-
-    child.stdout?.on("data", (chunk: Buffer) => {
-      if (stdoutBytes >= max) {
-        stdoutTruncated = true;
-        return;
-      }
-      stdoutChunks.push(chunk);
-      stdoutBytes += chunk.byteLength;
-      if (stdoutBytes >= max) stdoutTruncated = true;
-    });
-
-    child.stderr?.on("data", (chunk: Buffer) => {
-      if (stderrBytes >= max) {
-        stderrTruncated = true;
-        return;
-      }
-      stderrChunks.push(chunk);
-      stderrBytes += chunk.byteLength;
-      if (stderrBytes >= max) stderrTruncated = true;
-    });
-
-    child.on("close", (code, signal) => {
-      clearTimeout(timer);
-      const stdout = Buffer.concat(stdoutChunks).subarray(0, max).toString("utf8");
-      const stderr = Buffer.concat(stderrChunks).subarray(0, max).toString("utf8");
-      resolve({
-        exitCode: code,
-        signal,
-        stdout,
-        stderr,
-        stdoutTruncated,
-        stderrTruncated,
-        durationMs: Date.now() - startedAt,
-        timedOut,
-      });
-    });
-
-    // If spawn fails (ENOENT), we'll see 'error' and then 'close' might not fire.
-    child.on("error", (err) => {
-      clearTimeout(timer);
-      resolve({
-        exitCode: null,
-        signal: null,
-        stdout: "",
-        stderr: String((err as any)?.message ?? err),
-        stdoutTruncated: false,
-        stderrTruncated: false,
-        durationMs: Date.now() - start,
-        timedOut: false,
-      });
-    });
-  });
 }
 
 export async function workspaceRun(input: WorkspaceRunInput): Promise<WorkspaceRunResult> {
