@@ -86,6 +86,33 @@ To keep Phase 1 maintainable, several "safest path" refactors were completed wit
   - run (success, denylist, timeout)
 - [../examples/two-workspaces-demo/](../examples/two-workspaces-demo/) demonstrates two independent workspaces from the same repo.
 
+## Current Validation Status
+
+As of 2026-02-15, the following checks pass locally:
+
+- `npm run format:check`
+- `npm run lint`
+- `npm run build`
+- `npm test`
+- `npm run smoke`
+
+## Code Review Notes (2026-02-15)
+
+High-level review highlights:
+
+- Lock enforcement is centralized in `src/core/locks.ts` and enforced by mutation cores (`src/core/patches.ts`, `src/core/runs.ts`, `src/core/workspaces.ts`).
+- `workspace.run` also enforces locks in the tool layer (`src/tools/codeOps/run.ts`) as a defense-in-depth check.
+- Workspace deletion is guarded by:
+  - path boundary checks under `WORKPLANE_ROOT`
+  - a per-worktree marker file (`.workplane-workspace.json`) that must match the `workspace_id`
+
+Known limitations / follow-ups:
+
+- `src/core/runPolicy.ts` tokenization is intentionally minimal; for complex quoting scenarios, prefer providing `args[]` explicitly.
+- Command denylist matches by executable basename; this is good for safety-by-default but not a sandbox.
+- Persistence is single-process per `WORKPLANE_ROOT` (JSON store). Multi-process safety requires SQLite or file locking.
+- Workspace metadata persists `repo_url`; users should avoid embedding secrets in URLs until redaction is added.
+
 ## What We Still Need To Do (Phase 1 Hardening)
 
 1. Command policy hardening for `workspace.run`:

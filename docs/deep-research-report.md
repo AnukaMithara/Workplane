@@ -49,8 +49,9 @@ These are the highest-impact remaining items for stability and real-world usage:
    - Workspace metadata persists `repo_url` into `state.json`.
    - If users embed tokens in a URL, secrets can land on disk. Recommend documenting this prominently and adding redaction.
 
-3. Operational docs for failure modes
-   - Common issues need clear playbooks: private repo auth failures, stuck locks, worktree cleanup, missing artifact files, and safe cleanup under `WORKPLANE_ROOT`.
+3. Operational readiness
+   - Operator playbooks exist (`docs/operations.md`) and common failure guides exist (`docs/troubleshooting.md`).
+   - Remaining need: keep extending these as new real-world failure modes show up (private repo auth, stuck locks, worktree cleanup, missing artifact files, safe cleanup under `WORKPLANE_ROOT`).
 
 4. Command policy usability and security
    - Denylist is safe-by-default, but real projects often need a clear policy story (allowlist mode, per-tool policies, better documentation of what is blocked and why).
@@ -62,18 +63,18 @@ These are the highest-impact remaining items for stability and real-world usage:
 
 ## Recommended Next Steps (Safest Order)
 
-1. Documentation and operator readiness (low risk, immediate value)
-   - Refresh docs to reflect current module layout and persistence behavior.
-   - Add `docs/operations.md` (recovery playbooks) and `docs/troubleshooting.md` (auth/tooling common errors).
-   - Ensure `README.md` and `docs/README.md` link to the above.
+1. Security hardening (targeted)
+   - Redact secrets from persisted `repo_url` (strip embedded credentials; consider removing query params).
+   - Add clearer documentation around `WORKPLANE_ROOT` trust model and what is safe to delete.
 
 2. Refactor for maintainability (behavior-preserving)
    - Split `src/core/artifacts.ts` into smaller modules without changing tool behavior; add/extend tests.
    - Split `src/core/runs.ts` to isolate spawn/capture vs persisted run metadata; add/extend tests.
 
-3. Security hardening (targeted)
-   - Redact secrets from persisted `repo_url` (strip embedded credentials; consider removing query params).
-   - Add clearer documentation around `WORKPLANE_ROOT` trust model and what is safe to delete.
+3. Command policy hardening (usability + safety)
+   - Add an optional allowlist mode and/or per-tool policies.
+   - Improve documentation of denylist defaults and recommended operator configuration.
+   - Document process termination semantics (especially Windows) and current limitations clearly.
 
 4. Persistence evolution (optional for v0.1, likely for v0.2)
    - Introduce a storage interface and add a SQLite backend (WAL) if multi-process or higher concurrency is required.
