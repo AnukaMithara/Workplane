@@ -1,18 +1,23 @@
 import fs from "node:fs/promises";
-import path from "node:path";
+
 import { getWorkplanePaths } from "./config.js";
-import { sha256Hex, newId } from "./ids.js";
+import { newId } from "./ids.js";
 import {
-  ensureDir,
   assertPathWithinRoot,
   safeResolveChild,
   assertSafePathSegment,
 } from "./pathSafety.js";
-import { ensureGitAvailable, gitInRepo, git } from "./git.js";
+import { ensureGitAvailable } from "./git.js";
 import { WorkplaneStore, type WorkspaceRecord } from "./store.js";
 import { checkWorkspaceMutationAllowed, workspaceRelease } from "./locks.js";
-
-const WORKSPACE_MARKER = ".workplane-workspace.json";
+import { ensureRepoCache, resolveBaseSha } from "./repoCache.js";
+import { verifyWorkspaceMarker, writeWorkspaceMarker } from "./workspaceMarker.js";
+import {
+  worktreeAdd,
+  worktreeRemove,
+  worktreePathExists,
+  worktreePrune,
+} from "./worktree.js";
 
 export type WorkspaceCreateInput = {
   repo_url?: string;
@@ -32,94 +37,6 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function normalizeRepoIdentity(input: { repo_url?: string; repo_path?: string }) {
-  if (input.repo_url) return `url:${input.repo_url}`;
-  // Normalize local path: absolute, platform-specific.
-  return `path:${path.resolve(input.repo_path ?? "")}`;
-}
-
-async function pathExists(p: string) {
-  try {
-    await fs.stat(p);
-    return true;
-  } catch (err: any) {
-    if (err?.code === "ENOENT") return false;
-    throw err;
-  }
-}
-
-async function ensureRepoCache(input: WorkspaceCreateInput) {
-  const paths = getWorkplanePaths();
-  ensureDir(paths.root);
-  ensureDir(paths.reposDir);
-  ensureDir(paths.workspacesDir);
-  ensureDir(paths.artifactsDir);
-
-  const identity = normalizeRepoIdentity(input);
-  const repo_id = sha256Hex(identity);
-  const repoCachePath = safeResolveChild(paths.reposDir, repo_id);
-
-  const exists = await pathExists(repoCachePath);
-  if (!exists) {
-    if (input.repo_url) {
-      const r = await git(["clone", input.repo_url, repoCachePath]);
-      if (!r.ok) {
-        throw new Error(`Failed to clone repo_url into cache: ${r.stderr || r.stdout}`.trim());
-      }
-    } else if (input.repo_path) {
-      const src = path.resolve(input.repo_path);
-      const r = await git(["clone", src, repoCachePath]);
-      if (!r.ok) {
-        throw new Error(`Failed to clone repo_path into cache: ${r.stderr || r.stdout}`.trim());
-      }
-    } else {
-      throw new Error("Either repo_url or repo_path is required.");
-    }
-  } else {
-    // Best-effort keep cache fresh for remote repos.
-    if (input.repo_url) {
-      await gitInRepo(repoCachePath, ["fetch", "--all", "--prune"]).catch(() => {});
-    }
-  }
-
-  return { repo_id, repoCachePath };
-}
-
-async function resolveBaseSha(repoCachePath: string, baseRef: string) {
-  // Verify and resolve the ref to a commit SHA.
-  let r = await gitInRepo(repoCachePath, ["rev-parse", "--verify", `${baseRef}^{commit}`]);
-  if (!r.ok) {
-    // Try a fetch and retry once (helps for remote branches/tags).
-    await gitInRepo(repoCachePath, ["fetch", "--all", "--prune"]).catch(() => {});
-    r = await gitInRepo(repoCachePath, ["rev-parse", "--verify", `${baseRef}^{commit}`]);
-  }
-  if (!r.ok) {
-    throw new Error(`Invalid base_ref: ${baseRef}`.trim());
-  }
-  return r.stdout.trim();
-}
-
-async function writeWorkspaceMarker(worktreePath: string, workspace_id: string) {
-  const markerPath = path.join(worktreePath, WORKSPACE_MARKER);
-  const content = {
-    workspace_id,
-    created_at: nowIso(),
-    marker: "workplane",
-  };
-  await fs.writeFile(markerPath, JSON.stringify(content, null, 2) + "\n", "utf8");
-}
-
-async function verifyWorkspaceMarker(worktreePath: string, workspace_id: string) {
-  const markerPath = path.join(worktreePath, WORKSPACE_MARKER);
-  try {
-    const raw = await fs.readFile(markerPath, "utf8");
-    const parsed = JSON.parse(raw) as any;
-    return parsed?.workspace_id === workspace_id && parsed?.marker === "workplane";
-  } catch {
-    return false;
-  }
-}
-
 export async function workspaceCreate(input: WorkspaceCreateInput) {
   const gitErr = await ensureGitAvailable();
   if (gitErr) return { ok: false as const, error: gitErr };
@@ -128,7 +45,6 @@ export async function workspaceCreate(input: WorkspaceCreateInput) {
   const store = new WorkplaneStore(paths.root, paths.stateFile);
 
   const { repo_id, repoCachePath } = await ensureRepoCache(input);
-  assertPathWithinRoot(paths.root, repoCachePath, "Repo cache path");
 
   const workspace_id = newId("ws");
   const worktreePath = safeResolveChild(paths.workspacesDir, workspace_id);
@@ -141,14 +57,12 @@ export async function workspaceCreate(input: WorkspaceCreateInput) {
     input.branch_name?.trim() || `workplane-ws-${workspace_id.replaceAll(":", "_")}`;
 
   // Create worktree
-  const add = await gitInRepo(repoCachePath, [
-    "worktree",
-    "add",
-    worktreePath,
-    "-b",
+  const add = await worktreeAdd({
+    repo_cache_path: repoCachePath,
+    worktree_path: worktreePath,
     branch_name,
     base_sha,
-  ]);
+  });
   if (!add.ok) {
     throw new Error(`Failed to create worktree: ${add.stderr || add.stdout}`.trim());
   }
@@ -234,23 +148,20 @@ export async function workspaceClose(input: WorkspaceCloseInput) {
     };
   }
 
-  // Prefer git's worktree removal, which also cleans metadata.
-  const rm = await gitInRepo(rec.repo_cache_path, [
-    "worktree",
-    "remove",
-    "--force",
-    rec.worktree_path,
-  ]);
+  const rm = await worktreeRemove({
+    repo_cache_path: rec.repo_cache_path,
+    worktree_path: rec.worktree_path,
+  });
 
   // Fallback: if git failed but the directory still exists, remove it directly
   // (only after marker + root checks).
-  const stillExists = await pathExists(rec.worktree_path);
+  const stillExists = await worktreePathExists(rec.worktree_path);
   if (!rm.ok && stillExists) {
     await fs.rm(rec.worktree_path, { recursive: true, force: true });
   }
 
   // Best-effort prune.
-  await gitInRepo(rec.repo_cache_path, ["worktree", "prune"]).catch(() => {});
+  await worktreePrune(rec.repo_cache_path);
 
   const closed_at = nowIso();
   const updated: WorkspaceRecord = {
