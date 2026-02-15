@@ -1,44 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { decodeBase64ToBuffer } from "./artifactEncoding.js";
+import { ensureWorkspaceArtifactsDir, pathExists } from "./artifactFs.js";
 import { getWorkplanePaths } from "./config.js";
 import { newId } from "./ids.js";
-import {
-  assertPathWithinRoot,
-  assertSafePathSegment,
-  ensureDir,
-  safeResolveChild,
-} from "./pathSafety.js";
+import { assertPathWithinRoot, assertSafePathSegment, safeResolveChild } from "./pathSafety.js";
 import { WorkplaneStore, type ArtifactRecord, type ArtifactType } from "./store.js";
 
 function nowIso() {
   return new Date().toISOString();
-}
-
-async function pathExists(p: string) {
-  try {
-    await fs.stat(p);
-    return true;
-  } catch (err: any) {
-    if (err?.code === "ENOENT") return false;
-    throw err;
-  }
-}
-
-function decodeBase64ToBuffer(b64: string) {
-  // Node's Buffer.from(..., "base64") is permissive (it may ignore invalid chars).
-  // We want strict-ish validation so callers can rely on INVALID_INPUT.
-  const clean = b64.trim().replace(/\s+/g, "");
-  if (clean.length === 0) return Buffer.alloc(0);
-  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(clean)) return null;
-  // Base64 length mod 4 cannot be 1. Padding (if present) must make length a multiple of 4.
-  const mod = clean.length % 4;
-  if (mod === 1) return null;
-  if (clean.includes("=") && mod !== 0) return null;
-
-  const buf = Buffer.from(clean, "base64");
-  const normalize = (s: string) => s.replace(/=+$/g, "");
-  if (normalize(buf.toString("base64")) !== normalize(clean)) return null;
-  return buf;
 }
 
 export type ArtifactPutInput = {
@@ -64,9 +34,7 @@ export async function artifactPut(input: ArtifactPutInput) {
     };
   }
 
-  ensureDir(paths.artifactsDir);
-  const wsArtifactsDir = safeResolveChild(paths.artifactsDir, input.workspace_id);
-  ensureDir(wsArtifactsDir);
+  const wsArtifactsDir = ensureWorkspaceArtifactsDir(paths.artifactsDir, input.workspace_id);
 
   const artifact_id = newId("art");
   assertSafePathSegment(artifact_id, "artifact_id");

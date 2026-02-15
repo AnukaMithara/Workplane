@@ -67,6 +67,10 @@ To keep Phase 1 maintainable, several "safest path" refactors were completed wit
 - JSON store hardening (`src/core/store.ts`):
   - in-process serialization of state mutations to prevent lost updates under concurrent tool calls
   - safer atomic replace behavior on Windows
+- Artifacts core split into focused helpers:
+  - `src/core/artifactEncoding.ts` (strict-ish base64 decoding)
+  - `src/core/artifactFs.ts` (artifact directory creation + path existence helper)
+  - `src/core/artifacts.ts` remains the stable public entrypoint used by tools/tests
 
 ## Repo Scripts / Examples
 
