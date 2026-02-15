@@ -129,10 +129,7 @@ export async function artifactPut(input: ArtifactPutInput) {
   };
 }
 
-export async function artifactGet(input: {
-  workspace_id: string;
-  artifact_id: string;
-}) {
+export async function artifactGet(input: { workspace_id: string; artifact_id: string }) {
   const paths = getWorkplanePaths();
   const store = new WorkplaneStore(paths.root, paths.stateFile);
 

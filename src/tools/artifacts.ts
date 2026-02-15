@@ -10,15 +10,10 @@ export function registerArtifactTools(server: McpServer) {
       description: "Store an artifact for a workspace.",
       inputSchema: {
         workspace_id: z.string().min(1),
-        type: z
-          .enum(["diff", "log", "file", "note", "report"])
-          .describe("Artifact type"),
+        type: z.enum(["diff", "log", "file", "note", "report"]).describe("Artifact type"),
         name: z.string().optional(),
         content: z.string().optional().describe("Inline artifact content (utf-8)"),
-        content_base64: z
-          .string()
-          .optional()
-          .describe("Inline artifact content (base64)"),
+        content_base64: z.string().optional().describe("Inline artifact content (base64)"),
         content_type: z.string().optional().describe("MIME type hint"),
         metadata: z.record(z.string(), z.unknown()).optional(),
       },
@@ -116,4 +111,3 @@ export function registerArtifactTools(server: McpServer) {
     }
   );
 }
-

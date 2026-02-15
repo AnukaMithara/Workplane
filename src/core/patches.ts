@@ -83,11 +83,7 @@ export async function workspaceApplyPatch(input: WorkspaceApplyPatchInput) {
   if (!patchArtifact.ok) return patchArtifact;
 
   if (input.check) {
-    const chk = await gitInRepoWithStdin(
-      ws.worktree_path,
-      ["apply", "--check", "-"],
-      input.patch
-    );
+    const chk = await gitInRepoWithStdin(ws.worktree_path, ["apply", "--check", "-"], input.patch);
     if (!chk.ok) {
       return {
         ok: false as const,
@@ -105,11 +101,7 @@ export async function workspaceApplyPatch(input: WorkspaceApplyPatchInput) {
     }
   }
 
-  const apply = await gitInRepoWithStdin(
-    ws.worktree_path,
-    ["apply", "-"],
-    input.patch
-  );
+  const apply = await gitInRepoWithStdin(ws.worktree_path, ["apply", "-"], input.patch);
   if (!apply.ok) {
     return {
       ok: false as const,
@@ -134,4 +126,3 @@ export async function workspaceApplyPatch(input: WorkspaceApplyPatchInput) {
     patch_artifact_id: patchArtifact.artifact_id,
   };
 }
-

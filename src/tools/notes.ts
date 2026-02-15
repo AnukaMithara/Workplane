@@ -42,4 +42,3 @@ export function registerNoteTools(server: McpServer) {
     async () => notImplemented("workspace.note.list")
   );
 }
-

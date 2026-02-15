@@ -27,11 +27,7 @@ export function isPathWithinRoot(rootAbs: string, candidateAbs: string): boolean
   return cand === path.resolve(rootAbs) || cand.startsWith(root);
 }
 
-export function assertPathWithinRoot(
-  rootAbs: string,
-  candidateAbs: string,
-  label: string
-) {
+export function assertPathWithinRoot(rootAbs: string, candidateAbs: string, label: string) {
   if (!isPathWithinRoot(rootAbs, candidateAbs)) {
     throw new Error(
       `${label} resolves outside Workplane root. root=${path.resolve(

@@ -32,10 +32,7 @@ function git(cwd: string, args: string[]) {
 }
 
 function getStructured(callResult: any) {
-  return (
-    callResult?.structuredContent ??
-    JSON.parse(callResult?.content?.[0]?.text ?? "{}")
-  );
+  return callResult?.structuredContent ?? JSON.parse(callResult?.content?.[0]?.text ?? "{}");
 }
 
 async function main() {
@@ -316,4 +313,3 @@ main().catch((err) => {
   console.error(err);
   process.exitCode = 1;
 });
-

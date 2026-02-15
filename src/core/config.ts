@@ -59,4 +59,3 @@ export function getCommandDenylist(): string[] {
     "fish",
   ];
 }
-

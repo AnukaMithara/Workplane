@@ -121,4 +121,3 @@ export async function workspaceDiff(input: WorkspaceDiffInput) {
 
   return { ok: true as const, workspace_id: ws.workspace_id, diff };
 }
-

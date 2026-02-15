@@ -83,10 +83,7 @@ export async function workspaceLock(input: {
   };
 }
 
-export async function workspaceRelease(input: {
-  workspace_id: string;
-  holder_id: string;
-}) {
+export async function workspaceRelease(input: { workspace_id: string; holder_id: string }) {
   const store = await getStore();
   const existing = await readActiveLock(store, input.workspace_id);
   if (!existing) {

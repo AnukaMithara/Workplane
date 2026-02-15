@@ -226,12 +226,9 @@ export async function workspaceRun(input: WorkspaceRunInput): Promise<WorkspaceR
 
   assertPathWithinRoot(paths.root, ws.worktree_path, "Recorded worktree path");
 
-  const timeoutMs =
-    input.timeout_ms && input.timeout_ms > 0 ? input.timeout_ms : 120_000;
+  const timeoutMs = input.timeout_ms && input.timeout_ms > 0 ? input.timeout_ms : 120_000;
   const maxOutputBytes =
-    input.max_output_bytes && input.max_output_bytes > 0
-      ? input.max_output_bytes
-      : 256 * 1024;
+    input.max_output_bytes && input.max_output_bytes > 0 ? input.max_output_bytes : 256 * 1024;
 
   let file = input.command;
   let args = Array.isArray(input.args) ? input.args : undefined;
@@ -243,8 +240,7 @@ export async function workspaceRun(input: WorkspaceRunInput): Promise<WorkspaceR
         ok: false as const,
         error: {
           code: "INVALID_INPUT",
-          message:
-            "command could not be parsed. Provide args[] for unambiguous execution.",
+          message: "command could not be parsed. Provide args[] for unambiguous execution.",
         },
       };
     }
@@ -329,4 +325,3 @@ export async function workspaceRun(input: WorkspaceRunInput): Promise<WorkspaceR
     stderr_artifact_id: stderrArtifact.artifact_id,
   };
 }
-

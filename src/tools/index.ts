@@ -12,4 +12,3 @@ export function registerPhase1Tools(server: McpServer) {
   registerArtifactTools(server);
   registerNoteTools(server);
 }
-

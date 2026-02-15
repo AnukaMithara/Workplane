@@ -41,10 +41,6 @@ export async function gitInRepo(repoDir: string, args: string[]) {
   return await git(["-C", path.resolve(repoDir), ...args]);
 }
 
-export async function gitInRepoWithStdin(
-  repoDir: string,
-  args: string[],
-  stdinUtf8: string
-) {
+export async function gitInRepoWithStdin(repoDir: string, args: string[], stdinUtf8: string) {
   return await gitWithStdin(["-C", path.resolve(repoDir), ...args], stdinUtf8);
 }

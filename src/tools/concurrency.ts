@@ -59,12 +59,8 @@ export function registerConcurrencyTools(server: McpServer) {
         }
         return toolOk({ workspace_id: r.workspace_id, released_at: r.released_at });
       } catch (err: any) {
-        return toolErr(
-          "RELEASE_FAILED",
-          err?.message ?? "workspace.release failed"
-        );
+        return toolErr("RELEASE_FAILED", err?.message ?? "workspace.release failed");
       }
     }
   );
 }
-

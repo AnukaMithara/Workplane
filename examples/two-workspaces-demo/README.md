@@ -34,4 +34,3 @@ At the end, it prints a short summary including:
 - diff artifact ids
 - run stdout/stderr artifact ids
 - artifact lists for each workspace
-
